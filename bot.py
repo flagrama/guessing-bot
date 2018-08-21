@@ -4,6 +4,7 @@ import logging
 
 import irc.bot
 import requests
+import mongoengine as mongodb
 
 class TwitchBot(irc.bot.SingleServerIRCBot):
     def __init__(self, debug):
@@ -17,6 +18,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
 
         self.get_channel_id
         self.irc_connect(username)
+        self.database_connect()
 
     # Methods
     def init_logging(self, debug):
@@ -40,6 +42,16 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         r = requests.get(url, headers=headers).json()
 
         self.channel_id = r['data'][0]['id']
+
+    def database_connect(self):
+        try:
+            mongodb_uri = os.environ['MONGODB_URI']
+            mongodb.connect(host=mongodb_uri)
+            self.logger.info('Connected to database.')
+        except mongodb.connection.MongoEngineConnectionError as e:
+            self.logger.error('Unable to connect to database!')
+            self.logger.error(e)
+            raise e
 
     # Events
     def on_welcome(self, connection, event):
