@@ -36,6 +36,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
             self.logger.setLevel(logging.INFO)
 
     def get_default_commands(self):
+        self.default_commands = ['!addcom', '!delcom', '!editcom']
         self.commands = ['!addcom', '!delcom', '!editcom']
 
     def get_channel_id(self):
@@ -84,14 +85,31 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
                 message = 'Command %s already exists' % command[1]
                 self.logger.info(message)
                 connection.privmsg(self.channel, message)
-            if len(command) > 2:
+            elif len(command) > 2:
                 customCommands.add_command(self.streamer, command[1], command[2:])
                 self.commands += [command[1]]
+                self.logger.info('Added custom command %s with output %s' % (command[1], ' '.join(command[2:])))
                 self.logger.debug(self.commands)
             else:
                 message = 'Custom commands require a message to send to chat when called'
                 self.logger.info(message)
                 connection.privmsg(self.channel, message)
+
+        elif command[0] == '!delcom':
+            self.logger.debug('Delete Command command recieved')
+            if command[1] in self.default_commands:
+                message = 'Command %s cannot be removed' % command[1]
+                self.logger.info(message)
+                connection.privmsg(self.channel, message)
+            elif not command[1] in self.commands:
+                message = 'Command %s does not exist' % command[1]
+                self.logger.info(message)
+                connection.privmsg(self.channel, message)
+            else:
+                customCommands.remove_command(self.streamer, command[1])
+                self.commands.remove(command[1])
+                self.logger.info('Removed custom command %s' % command[1])
+                self.logger.debug(self.commands)
 
         else:
             self.logger.debug('Built-in command not found')
@@ -114,6 +132,5 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         self.logger.debug(event)
         command = event.arguments[0].split(' ')
         if command[0] in self.commands:
-            self.logger.info('Recieved command: %s' % command[0])
             self.do_command(event, command)
 

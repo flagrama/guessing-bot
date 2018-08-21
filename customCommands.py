@@ -1,4 +1,5 @@
 import mongoengine as mongodb
+from database.streamer import *
 from database.command import *
 
 def add_command(streamer, name, output):
@@ -6,3 +7,6 @@ def add_command(streamer, name, output):
     new_command = Command(name = name, output = message)
     streamer.commands.append(new_command)
     streamer.save()
+
+def remove_command(streamer, name):
+    streamer.update(pull__commands__name = name)
