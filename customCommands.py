@@ -1,6 +1,5 @@
-import mongoengine as mongodb
-from database.streamer import *
 from database.command import *
+from database.streamer import *
 
 def add_command(streamer, name, output):
     message = ' '.join(output)
@@ -10,3 +9,9 @@ def add_command(streamer, name, output):
 
 def remove_command(streamer, name):
     streamer.update(pull__commands__name = name)
+
+def edit_command(streamer, name, output):
+    message = ' '.join(output)
+    command = Streamer.objects.filter(channel_id = streamer.channel_id, commands__name = name)
+    command.update(set__commands__S__output = message)
+    streamer.save()
