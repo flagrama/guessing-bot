@@ -12,6 +12,5 @@ def remove_command(streamer, name):
 
 def edit_command(streamer, name, output):
     message = ' '.join(output)
-    command = Streamer.objects.filter(channel_id = streamer.channel_id, commands__name = name)
-    command.update(set__commands__S__output = message)
-    streamer.save()
+    Streamer.objects.filter(channel_id = streamer.channel_id, commands__name = name).update(set__commands__S__output = message)
+    streamer.reload()
