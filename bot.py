@@ -5,6 +5,7 @@ import logging
 import irc.bot
 import requests
 import mongoengine as mongodb
+from database.streamer import *
 
 class TwitchBot(irc.bot.SingleServerIRCBot):
     def __init__(self, debug):
@@ -16,9 +17,10 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         self.channel_name = os.environ['TWITCH_CHANNEL']
         self.channel = '#%s' % self.channel_name
 
-        self.get_channel_id
+        self.get_channel_id()
         self.irc_connect(username)
         self.database_connect()
+        self.get_streamer_from_database()
 
     # Methods
     def init_logging(self, debug):
@@ -52,6 +54,18 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
             self.logger.error('Unable to connect to database!')
             self.logger.error(e)
             raise e
+
+    def get_streamer_from_database(self):
+        for streamer in Streamer.objects(channel_id=self.channel_id):
+            self.streamer = streamer
+
+        if not hasattr(self, 'streamer'):
+            self.logger.debug('Unable to find streamer with ID %s in the database' % self.channel_id)
+            self.logger.debug('Creating new entry for streamer with ID %s' % self.channel_id)
+            self.streamer = Streamer(name = self.channel_name, channel_id = self.channel_id)
+            self.streamer.save()
+
+        self.commands = self.streamer.commands
 
     # Events
     def on_welcome(self, connection, event):
