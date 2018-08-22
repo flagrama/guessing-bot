@@ -8,6 +8,7 @@ import mongoengine as mongodb
 
 from database.streamer import *
 import customCommands
+import defaultCommands
 
 class TwitchBot(irc.bot.SingleServerIRCBot):
     def __init__(self, debug):
@@ -80,7 +81,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         connection = self.connection
 
         if command[0] in self.default_commands:
-            self.do_default_command(connection, command)
+            defaultCommands.do_default_command(self, connection, command)
         else:
             self.logger.debug('Built-in command not found')
             for custom_command in self.streamer.commands:
@@ -88,53 +89,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
                     self.logger.info('Custom command %s received' % custom_command.name)
                     connection.privmsg(self.channel, custom_command.output)
 
-    def do_default_command(self, connection, command):
-        if command[0] == '!addcom':
-            self.logger.debug('Add Command command received')
-            if command[1] in self.commands:
-                message = 'Command %s already exists' % command[1]
-                self.logger.info(message)
-                connection.privmsg(self.channel, message)
-            elif len(command) > 2:
-                customCommands.add_command(self.streamer, command[1], command[2:])
-                self.commands += [command[1]]
-                self.logger.info('Added custom command %s with output %s' % (command[1], ' '.join(command[2:])))
-                self.logger.debug(self.commands)
-            else:
-                message = 'Custom commands require a message to send to chat when called'
-                self.logger.info(message)
-                connection.privmsg(self.channel, message)
-
-        elif command[0] == '!delcom':
-            self.logger.debug('Delete Command command received')
-            if command[1] in self.default_commands:
-                message = 'Command %s cannot be removed' % command[1]
-                self.logger.info(message)
-                connection.privmsg(self.channel, message)
-            elif not command[1] in self.commands:
-                message = 'Command %s does not exist' % command[1]
-                self.logger.info(message)
-                connection.privmsg(self.channel, message)
-            else:
-                customCommands.remove_command(self.streamer, command[1])
-                self.commands.remove(command[1])
-                self.logger.info('Removed custom command %s' % command[1])
-                self.logger.debug(self.commands)
-
-        elif command[0] == '!editcom':
-            self.logger.debug('Edit Command command received')
-            if command[1] in self.default_commands:
-                message = 'Command %s cannot be edited' % command[1]
-                self.logger.info(message)
-                connection.privmsg(self.channel, message)
-            elif not command[1] in self.commands:
-                message = 'Command %s does not exist' % command[1]
-                self.logger.info(message)
-                connection.privmsg(self.channel, message)
-            else:
-                customCommands.edit_command(self.streamer, command[1], command[2:])
-                self.logger.info('Edited custom command %s' % command[1])
-                self.logger.debug(self.commands)
+    
 
     # Events
     def on_welcome(self, connection, event):
