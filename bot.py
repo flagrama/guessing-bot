@@ -16,16 +16,16 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
 
         self.client_id = os.environ['TWITCH_ID']
         self.token = os.environ['TWITCH_TOKEN']
-        username = os.environ['TWITCH_BOT_NAME']
+        self.username = os.environ['TWITCH_BOT_NAME']
         self.channel_name = os.environ['TWITCH_CHANNEL']
         self.channel = '#%s' % self.channel_name
 
         self.get_default_commands()
         self.get_channel_id()
-        self.irc_connect(username)
+        self.get_self_id()
+        self.irc_connect()
         self.database_connect()
         self.get_streamer_from_database()
-        self.logger.debug(self.commands)
 
     # Methods
     def init_logging(self, debug):
@@ -39,6 +39,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
     def get_default_commands(self):
         self.default_commands = ['!addcom', '!delcom', '!editcom']
         self.commands = ['!addcom', '!delcom', '!editcom']
+        self.logger.debug(self.commands)
 
     def get_channel_id(self):
         url = 'https://api.twitch.tv/helix/users?login=%s' % self.channel_name
@@ -46,19 +47,28 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         r = requests.get(url, headers=headers).json()
 
         self.channel_id = r['data'][0]['id']
+        self.logger.debug('Channel ID is %s' % self.channel_id)
 
-    def irc_connect(self, username):
+    def get_self_id(self):
+        url = 'https://api.twitch.tv/helix/users?login=%s' % self.username
+        headers = {'Client-ID': self.client_id}
+        r = requests.get(url, headers=headers).json()
+
+        self.id = r['data'][0]['id']
+        self.logger.debug('Self ID is %s' % self.id)
+
+    def irc_connect(self):
         server = 'irc.chat.twitch.tv'
         port = 6667
         self.logger.info('Connecting to %s on port %s...' % (server, port))
-        irc.bot.SingleServerIRCBot.__init__(self, [(server, port, self.token)], username, username)
+        irc.bot.SingleServerIRCBot.__init__(self, [(server, port, self.token)], self.username, self.username)
         self.logger.info('Connecting to database...')
 
     def database_connect(self):
         try:
             mongodb_uri = os.environ['MONGODB_URI']
             mongodb.connect(host=mongodb_uri)
-            self.logger.info('Connected to database.')
+            self.logger.debug('Connected to database.')
         except mongodb.connection.MongoEngineConnectionError as e:
             self.logger.error('Unable to connect to database!')
             self.logger.error(e)
@@ -76,6 +86,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
 
         for command in self.streamer.commands:
             self.commands += [command.name]
+            self.logger.debug(self.commands)
 
     def do_command(self, event, command):
         connection = self.connection
@@ -103,6 +114,11 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
 
     def on_pubmsg(self, connection, event):
         self.logger.debug(event)
+        for tag in event.tags:
+            if tag['key'] == 'user-id':
+                if tag['value'] == self.id:
+                    self.logger.info('Ignoring message from self')
+                    return
         command = event.arguments[0].split(' ')
         if command[0] in self.commands:
             self.do_command(event, command)
