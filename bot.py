@@ -9,6 +9,7 @@ import mongoengine as mongodb
 from database.streamer import *
 import customCommands
 import defaultCommands
+import whitelistCommands
 
 class TwitchBot(irc.bot.SingleServerIRCBot):
     def __init__(self, debug):
@@ -38,23 +39,25 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
 
     def get_default_commands(self):
         self.default_commands = ['!addcom', '!delcom', '!editcom']
-        self.commands = ['!addcom', '!delcom', '!editcom']
+        self.whitelist_commands = ['!hud']
+        self.commands = self.default_commands + self.whitelist_commands
         self.logger.debug(self.commands)
 
-    def get_channel_id(self):
-        url = 'https://api.twitch.tv/helix/users?login=%s' % self.channel_name
+    def get_user_id(self, username):
+        url = 'https://api.twitch.tv/helix/users?login=%s' % username
         headers = {'Client-ID': self.client_id}
         r = requests.get(url, headers=headers).json()
 
-        self.channel_id = r['data'][0]['id']
+        user_id = r['data'][0]['id']
+        self.logger.debug('Found user ID %s' % user_id)
+        return user_id
+
+    def get_channel_id(self):
+        self.channel_id = self.get_user_id(self.channel_name)
         self.logger.debug('Channel ID is %s' % self.channel_id)
 
     def get_self_id(self):
-        url = 'https://api.twitch.tv/helix/users?login=%s' % self.username
-        headers = {'Client-ID': self.client_id}
-        r = requests.get(url, headers=headers).json()
-
-        self.id = r['data'][0]['id']
+        self.id = self.get_user_id(self.username)
         self.logger.debug('Self ID is %s' % self.id)
 
     def irc_connect(self):
@@ -95,11 +98,21 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
                         return True
         return False
 
+    def is_whitelist(self, event):
+        for tag in event.tags:
+            if tag['key'] == 'user-id':
+                if Streamer.objects.filter(channel_id = self.streamer.channel_id, whitelist__user_id = tag['value']):
+                    return True
+        return False
+
     def do_command(self, event, command):
         connection = self.connection
         command_name = command[0]
 
-        if command_name in self.default_commands:
+        if command_name in self.whitelist_commands:
+            if self.is_whitelist(event) or self.is_mod(event):
+                whitelistCommands.do_whitelist_command(self, connection, command)
+        elif command_name in self.default_commands:
             if self.is_mod(event):
                 defaultCommands.do_default_command(self, connection, command)
                 return
