@@ -88,20 +88,26 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
             self.commands += [command.name]
         self.logger.debug(self.commands)
 
-    def do_command(self, event, command):
-        connection = self.connection
-
-        if command[0] in self.default_commands:
-            for tag in event.tags:
+    def is_mod(self, event):
+        for tag in event.tags:
                 if tag['key'] == 'user-id' or tag['key'] == 'mod':
                     if tag['value'] == self.channel_id or tag['value'] == '1':
-                        defaultCommands.do_default_command(self, connection, command)
-                        return
+                        return True
+        return False
+
+    def do_command(self, event, command):
+        connection = self.connection
+        command_name = command[0]
+
+        if command_name in self.default_commands:
+            if self.is_mod(event):
+                defaultCommands.do_default_command(self, connection, command)
+                return
             self.logger.info('User attempted to use a moderator-only command')
         else:
             self.logger.debug('Built-in command not found')
             for custom_command in self.streamer.commands:
-                if custom_command.name == command[0]:
+                if custom_command.name == command_name:
                     self.logger.info('Custom command %s received' % custom_command.name)
                     connection.privmsg(self.channel, custom_command.output)
 
