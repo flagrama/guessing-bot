@@ -11,27 +11,36 @@ def do_whitelist_command(twitch_bot, connection, command):
         twitch_bot.logger.error('Incomplete command')
         return
 
-    if(whitelist_command_name == 'reset'):
+    if whitelist_command_name == 'reset':
         twitch_bot.logger.error('%s not implemented', whitelist_command_name)
         return
-    elif(whitelist_command_name == 'add'):
+    elif whitelist_command_name == 'add':
         if add_user_to_whitelist(twitch_bot, command):
+            message = 'User %s added to whitelist' % command[2]
+            connection.privmsg(twitch_bot.channel, message)
+            twitch_bot.logger.info(message)
             return
         else:
             connection.privmsg(twitch_bot.channel, 'Unable to add user to whitelist')
-    elif(whitelist_command_name == 'remove'):
+    elif whitelist_command_name == 'remove':
         if remove_user_from_whitelist(twitch_bot, command):
+            message = 'User %s removed from whitelist' % command[2]
+            connection.privmsg(twitch_bot.channel, message)
+            twitch_bot.logger.info(message)
             return
         else:
             connection.privmsg(twitch_bot.channel, 'Unable to remove user from whitelist')
         return
-    elif(whitelist_command_name == 'ban'):
+    elif whitelist_command_name == 'ban':
         if add_user_to_blacklist(twitch_bot, command):
+            message = 'User %s added to blacklist' % command[2]
+            connection.privmsg(twitch_bot.channel, message)
+            twitch_bot.logger.info(message)
             return
         else:
             connection.privmsg(twitch_bot.channel, 'Unable to add user to blacklist')
         return
-    elif(whitelist_command_name == 'unban'):
+    elif whitelist_command_name == 'unban':
         if remove_user_from_blacklist(twitch_bot, command):
             message = 'User %s removed from blacklist' % command[2]
             connection.privmsg(twitch_bot.channel, message)
@@ -78,7 +87,6 @@ def add_user_to_whitelist(twitch_bot, command):
     try:
         twitch_bot.streamer.whitelist.append(new_user)
         twitch_bot.streamer.save()
-        twitch_bot.logger.info('User %s added to whitelist' % username)
         return True
     except mongodb.NotUniqueError:
         twitch_bot.logger.error('User with ID %s already exists in the database' % new_user_id)
@@ -102,7 +110,6 @@ def remove_user_from_whitelist(twitch_bot, command):
             return False
         Streamer.objects.update(channel_id = twitch_bot.streamer.channel_id, pull__whitelist__user_id = existing_user_id) #pylint: disable=no-member
         twitch_bot.streamer.save()
-        twitch_bot.logger.info('User %s removed from whitelist' % username)
         return True
     except Streamer.DoesNotExist: #pylint: disable=no-member
         twitch_bot.logger.error('User with ID %s does not exist in the database' % existing_user_id)
@@ -132,7 +139,6 @@ def add_user_to_blacklist(twitch_bot, command):
     try:
         twitch_bot.streamer.blacklist.append(new_user)
         twitch_bot.streamer.save()
-        twitch_bot.logger.info('User %s added to blacklist' % username)
         return True
     except mongodb.NotUniqueError:
         twitch_bot.logger.error('User with ID %s already exists in the database' % new_user_id)
