@@ -119,10 +119,13 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
             self.logger.info('User attempted to use a moderator-only command')
         else:
             self.logger.debug('Built-in command not found')
-            for custom_command in self.streamer.commands:
-                if custom_command.name == command_name:
+            try:
+                streamer = Streamer.objects.get(channel_id = self.streamer.channel_id, commands__name = command_name) #pylint: disable=no-member
+                for custom_command in streamer.commands:
                     self.logger.info('Custom command %s received' % custom_command.name)
                     connection.privmsg(self.channel, custom_command.output)
+            except Streamer.DoesNotExist: #pylint: disable=no-member
+                self.logger.error('Custom command %s not found in database but is in command list' % command_name)
 
     # Events
     def on_welcome(self, connection, event):
