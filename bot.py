@@ -109,12 +109,19 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
                     return True
         return False
 
+    def is_blacklist(self, event):
+        for tag in event.tags:
+            if tag['key'] == 'user-id':
+                if Streamer.objects.filter(channel_id = self.streamer.channel_id, blacklist__uesr_id = tag['value']): #pylint: disable=no-member
+                    return True
+        return False
+
     def do_command(self, event, command):
         connection = self.connection
         command_name = command[0]
 
         if command_name in self.whitelist_commands:
-            if self.is_whitelist(event) or self.is_mod(event):
+            if self.is_whitelist(event) or self.is_mod(event) and not self.is_blacklist(event):
                 whitelistCommands.do_whitelist_command(self, connection, command)
         elif command_name in self.default_commands:
             if self.is_mod(event):
