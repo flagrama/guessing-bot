@@ -51,6 +51,9 @@ def add_user_to_whitelist(twitch_bot, command):
         return False
 
     new_user_id = twitch_bot.get_user_id(username)
+    if not new_user_id:
+        return False
+
     new_user = WhitelistUser(username = username, user_id = new_user_id)
     try:
         twitch_bot.streamer.whitelist.append(new_user)
@@ -69,6 +72,9 @@ def remove_user_from_whitelist(twitch_bot, command):
         return False
 
     existing_user_id = twitch_bot.get_user_id(username)
+    if not existing_user_id:
+        return False
+
     try:
         streamer = Streamer.objects.get(channel_id = twitch_bot.streamer.channel_id, whitelist__user_id = existing_user_id) #pylint: disable=no-member
         if not streamer.whitelist:

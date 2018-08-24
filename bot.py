@@ -48,7 +48,11 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         headers = {'Client-ID': self.client_id}
         r = requests.get(url, headers=headers).json()
 
-        user_id = r['data'][0]['id']
+        try:
+            user_id = r['data'][0]['id']
+        except IndexError:
+            self.logger.error('User not found by Twitch API')
+            return None
         self.logger.debug('Found user ID %s' % user_id)
         return user_id
 
