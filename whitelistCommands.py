@@ -1,5 +1,6 @@
-from database.whitelist import *
-from database.streamer import *
+import mongoengine as mongodb
+from database.whitelist import WhitelistUser
+from database.streamer import Streamer
 
 # Currently will assume !hud <item> is the Guess Completion command
 def do_whitelist_command(twitch_bot, connection, command):

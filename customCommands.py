@@ -1,5 +1,5 @@
-from database.command import *
-from database.streamer import *
+from database.command import Command
+from database.streamer import Streamer
 
 def add_command(streamer, name, output):
     message = ' '.join(output)
@@ -12,5 +12,5 @@ def remove_command(streamer, name):
 
 def edit_command(streamer, name, output):
     message = ' '.join(output)
-    Streamer.objects.filter(channel_id = streamer.channel_id, commands__name = name).update(set__commands__S__output = message)
+    Streamer.objects.filter(channel_id = streamer.channel_id, commands__name = name).update(set__commands__S__output = message) #pylint: disable=no-member
     streamer.reload()

@@ -6,7 +6,7 @@ import irc.bot
 import requests
 import mongoengine as mongodb
 
-from database.streamer import *
+from database.streamer import Streamer
 import customCommands
 import defaultCommands
 import whitelistCommands
@@ -78,7 +78,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
             raise e
 
     def get_streamer_from_database(self):
-        for streamer in Streamer.objects(channel_id=self.channel_id):
+        for streamer in Streamer.objects(channel_id=self.channel_id): #pylint: disable=no-member
             self.streamer = streamer
 
         if not hasattr(self, 'streamer'):
@@ -101,7 +101,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
     def is_whitelist(self, event):
         for tag in event.tags:
             if tag['key'] == 'user-id':
-                if Streamer.objects.filter(channel_id = self.streamer.channel_id, whitelist__user_id = tag['value']):
+                if Streamer.objects.filter(channel_id = self.streamer.channel_id, whitelist__user_id = tag['value']): #pylint: disable=no-member
                     return True
         return False
 
