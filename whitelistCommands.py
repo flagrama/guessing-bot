@@ -2,6 +2,7 @@ import mongoengine as mongodb
 from database.whitelist import WhitelistUser, BlacklistUser
 from database.streamer import Streamer
 
+
 # Currently will assume !hud <item> is the Guess Completion command
 def do_whitelist_command(twitch_bot, connection, command):
     try:
@@ -31,7 +32,13 @@ def do_whitelist_command(twitch_bot, connection, command):
             connection.privmsg(twitch_bot.channel, 'Unable to add user to blacklist')
         return
     elif(whitelist_command_name == 'unban'):
-        twitch_bot.logger.error('%s not implemented', whitelist_command_name)
+        if remove_user_from_blacklist(twitch_bot, command):
+            message = 'User %s removed from blacklist' % command[2]
+            connection.privmsg(twitch_bot.channel, message)
+            twitch_bot.logger.info(message)
+            return
+        else:
+            connection.privmsg(twitch_bot.channel, 'Unable to remove user from blacklist')
         return
     else:
         item = command[2:]
@@ -39,12 +46,14 @@ def do_whitelist_command(twitch_bot, connection, command):
         twitch_bot.logger.error('%s not implemented', whitelist_command_name)
         return
 
+
 def get_username_from_command(command):
     try:
         username = command[2]
         return username
     except IndexError:
         return False
+
 
 def add_user_to_whitelist(twitch_bot, command):
     username = get_username_from_command(command)
@@ -66,6 +75,7 @@ def add_user_to_whitelist(twitch_bot, command):
     except mongodb.NotUniqueError:
         twitch_bot.logger.error('User with ID %s already exists in the database' % new_user_id)
         return False
+
 
 def remove_user_from_whitelist(twitch_bot, command):
     username = get_username_from_command(command)
@@ -118,6 +128,29 @@ def add_user_to_blacklist(twitch_bot, command):
         return True
     except mongodb.NotUniqueError:
         twitch_bot.logger.error('User with ID %s already exists in the database' % new_user_id)
+        return False
+
+
+def remove_user_from_blacklist(twitch_bot, command):
+    username = get_username_from_command(command)
+
+    if not username:
+        twitch_bot.logger.error('Username not provided')
+        return False
+
+    existing_user_id = twitch_bot.get_user_id(username)
+    if not existing_user_id:
+        return False
+
+    try:
+        streamer = Streamer.objects.get(channel_id = twitch_bot.streamer.channel_id, blacklist__user_id = existing_user_id) #pylint: disable=no-member
+        if not streamer.whitelist:
+            return False
+        Streamer.objects.update(channel_id = twitch_bot.streamer.channel_id, pull__blacklist__user_id = existing_user_id) #pylint: disable=no-member
+        twitch_bot.streamer.save()
+        return True
+    except Streamer.DoesNotExist: #pylint: disable=no-member
+        twitch_bot.logger.error('User with ID %s does not exist in the database' % existing_user_id)
         return False
 
 
