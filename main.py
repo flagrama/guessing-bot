@@ -1,19 +1,30 @@
 import argparse
+import logging
 
 import bot
 
-def main():
+def main(debug):
+    client = bot.TwitchBot(debug)
+    client.start()
+
+if __name__ == "__main__":
+    logging.basicConfig()
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+
     parser = argparse.ArgumentParser(\
         description='A bot for making a game of guessing upcoming items in \
         randomizers.')
     parser.add_argument('--debug', dest='debug', action='store_true', default=False)
     args = parser.parse_args()
 
-    client = bot.TwitchBot(args.debug)
-    client.start()
-
-if __name__ == "__main__":
     try:
-        main()
+        main(args.debug)
     except KeyboardInterrupt:
-        print('\nSIGINT recieved. Terminating.')
+        print('\n')
+        logger.info('SIGINT recieved. Terminating.')
+    except Exception as e:
+        if not args.debug:
+            logger.error(e)
+        else:
+            raise e
