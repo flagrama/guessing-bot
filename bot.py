@@ -112,7 +112,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
     def is_blacklist(self, event):
         for tag in event.tags:
             if tag['key'] == 'user-id':
-                if Streamer.objects.filter(channel_id = self.streamer.channel_id, blacklist__uesr_id = tag['value']): #pylint: disable=no-member
+                if Streamer.objects.filter(channel_id = self.streamer.channel_id, blacklist__user_id = tag['value']): #pylint: disable=no-member
                     return True
         return False
 
