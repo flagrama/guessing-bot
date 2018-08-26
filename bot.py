@@ -106,10 +106,8 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         mod = False
         whitelist = False
         blacklist = False
-        username = ''
 
         user_string = event.source.split('!')
-        username = user_string[0]
         for tag in event.tags:
             if tag['key'] == 'user-id':
                 if tag['value'] == self.channel_id:
@@ -130,12 +128,16 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
             "whitelist": whitelist,
             "blacklist": blacklist
         }
-        return username, permissions
+        user = {
+            "username": user_string[0],
+            "user-id": self.get_user_id(user_string[0])
+        }
+        return user, permissions
 
     def do_command(self, event, command):
         connection = self.connection
         command_name = command[0]
-        username, permissions = self.get_user_permissions(event)
+        user, permissions = self.get_user_permissions(event)
 
         if len(command) > 1:
             sub_command = command[1]
@@ -145,7 +147,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
                 whitelistCommands.do_whitelist_command(self, connection, command)
                 return
         if command_name in self.guessing_game.commands:
-            message = self.guessing_game.do_command(username, permissions, command)
+            message = self.guessing_game.do_command(user, permissions, command)
             if message:
                 self.connection.privmsg(self.channel, message)
             return

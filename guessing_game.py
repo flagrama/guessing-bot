@@ -41,13 +41,14 @@ class GuessingGame():
 
         self.logger.setLevel(logging.DEBUG)
 
-    def do_command(self, username, permissions, command):
+    def do_command(self, user, permissions, command):
         """
         The function to parse a command.
 
         Parameters:
-            username (string): The username of the command sender
-            command (string[]): A list of the command and its arguments
+            username (dict): A dictionary containing the username and user_id of the sender
+            permissions( dict): A dictionary containing the user permissions of the sender
+            command (string[]): A list containing the command and its arguments
         """
         try:
             command_name = command[0].lower()
@@ -61,22 +62,22 @@ class GuessingGame():
                     subcommand_name = command[1].lower()
                     command_value = command[2:]
                     if subcommand_name == 'medal':
-                        return self._do_medal_guess(username, command_value)
+                        return self._do_medal_guess(user, command_value)
                 command_value = command[1].lower()
                 item = self.parse_item(command_value)
-                self._do_item_guess(username, item)
+                self._do_item_guess(user, item)
 
             if (command_name == '!hud'
                     and (permissions['whitelist'] or permissions['mod'])
                     and not permissions['blacklist']):
                 command_value = command[1].lower()
                 item = self.parse_item(command_value)
-                return self._complete_guess(item, username)
+                return self._complete_guess(item)
         except IndexError:
             self.logger.error('Command missing arguments')
         return None
 
-    def _complete_guess(self, item, username):
+    def _complete_guess(self, item):
         if not item:
             self.logger.info('Item %s not found', item)
             return
@@ -88,9 +89,9 @@ class GuessingGame():
             if guess['guess'] is not item:
                 continue
             if not first_guess:
-                self.logger.info('User %s made the first correct guess', username)
+                self.logger.info('User %s made the first correct guess', guess['username'])
                 first_guess = True
-            self.logger.info('User %s guessed correctly', username)
+            self.logger.info('User %s guessed correctly', guess['username'])
         self.guesses['item'] = deque()
         self.logger.info('Guesses completed')
 
@@ -111,27 +112,27 @@ class GuessingGame():
             self.logger.error(message)
             return message
 
-    def _do_item_guess(self, username, item):
+    def _do_item_guess(self, user, item):
         if not item:
             self.logger.info('Item %s not found', item)
             return
-        self._remove_stale_guesses(self.guesses['item'], username)
+        self._remove_stale_guesses(self.guesses['item'], user['username'])
         now = datetime.now()
         guess = {
             "timestamp": now,
-            "username": username,
+            "username": user['username'],
             "guess": item
         }
         self.guesses['item'].append(guess)
-        self.logger.info('%s Item %s guessed by user %s', now, item, username)
+        self.logger.info('%s Item %s guessed by user %s', now, item, user['username'])
         self.logger.debug(self.guesses['item'])
 
-    def _do_medal_guess(self, username, medals):
+    def _do_medal_guess(self, user, medals):
         if len(medals) < 5 or len(medals) < 6 and not self.freebie:
             self.logger.info('Medal command incomplete')
             self.logger.debug(medals)
             return
-        self._remove_stale_guesses(self.guesses['medal'], username)
+        self._remove_stale_guesses(self.guesses['medal'], user['username'])
         medal_guess = {
             "forest": None,
             "fire": None,
@@ -150,7 +151,7 @@ class GuessingGame():
                 continue
             medal_guess[medal] = guess
             i += 1
-        medal_guess['username'] = username
+        medal_guess['username'] = user['username']
         medal_guess['timestamp'] = datetime.now()
         self.guesses['medal'].append(medal_guess)
         self.logger.debug(medal_guess)
