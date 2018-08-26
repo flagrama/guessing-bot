@@ -125,30 +125,31 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
             if tag['key'] == 'mod':
                 if tag['value'] == 1:
                     mod = True
-        return username, mod, whitelist, blacklist
+        permissions = {
+            "mod": mod,
+            "whitelist": whitelist,
+            "blacklist": blacklist
+        }
+        return username, permissions
 
     def do_command(self, event, command):
         connection = self.connection
         command_name = command[0]
-        username, is_mod, is_whitelist, is_blacklist = self.get_user_permissions(event)
+        username, permissions = self.get_user_permissions(event)
 
         if len(command) > 1:
             sub_command = command[1]
             if (' '.join([command_name, sub_command]) in self.whitelist_commands
-                    and ((is_whitelist or is_mod) and not is_blacklist)):
+                    and ((permissions['whitelist'] or permissions['mod']) 
+                    and not permissions['blacklist'])):
                 whitelistCommands.do_whitelist_command(self, connection, command)
                 return
         if command_name in self.guessing_game.commands:
-            message = self.guessing_game.do_command(
-                username,
-                is_whitelist,
-                is_mod,
-                is_blacklist,
-                command)
+            message = self.guessing_game.do_command(username, permissions, command)
             if message:
                 self.connection.privmsg(self.channel, message)
             return
-        if command_name in self.default_commands and is_mod:
+        if command_name in self.default_commands and permissions['mod']:
             defaultCommands.do_default_command(self, connection, command)
             return
         self.logger.debug('Built-in command not found')

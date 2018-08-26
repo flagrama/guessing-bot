@@ -41,7 +41,7 @@ class GuessingGame():
 
         self.logger.setLevel(logging.DEBUG)
 
-    def do_command(self, username, is_whitelist, is_mod, is_blacklist, command):
+    def do_command(self, username, permissions, command):
         """
         The function to parse a command.
 
@@ -51,51 +51,35 @@ class GuessingGame():
         """
         try:
             command_name = command[0].lower()
-            if command_name == '!guesspoints' and (is_whitelist or is_mod) and not is_blacklist:
-                try:
-                    command_value = command[1].lower()
-                    if int(command_value) > 0:
-                        message = 'Set points value to %s' % command_value
-                        self.streamer.points = command_value
-                        self.streamer.save()
-                        self.logger.info(message)
-                        return message
-                    message = 'Cannot set points value lower than 0'
-                    self.logger.info(message)
-                    return message
-                except ValueError:
-                    message = 'Cannot convert %s to an integer' % command_value
-                    self.logger.error(message)
-                    return message
+            if (command_name == '!guesspoints'
+                    and (permissions['whitelist'] or permissions['mod'])
+                    and not permissions['blacklist']):
+                return self._set_guess_points(command)
 
             if command_name == '!guess':
                 if len(command) > 2:
                     subcommand_name = command[1].lower()
                     command_value = command[2:]
                     if subcommand_name == 'medal':
-                        if len(command_value) < 5 or len(command_value) < 6 and not self.freebie:
-                            self.logger.info('Medal command incomplete')
-                            self.logger.debug(command_value)
-                            return ''
-                        self._do_medal_guess(username, command_value)
-                        return ''
-                item = self.parse_item(command_value)
-                if not item:
-                    self.logger.info('Item %s not found', command_value)
-                    return ''
-                self._do_item_guess(username, item)
-
-            if command_name == '!hud' and (is_whitelist or is_mod) and not is_blacklist:
+                        return self._do_medal_guess(username, command_value)
                 command_value = command[1].lower()
                 item = self.parse_item(command_value)
-                if not item:
-                    self.logger.info('Item %s not found', command_value)
-                    return ''
-                self._complete_guess(item, username)
+                self._do_item_guess(username, item)
+
+            if (command_name == '!hud'
+                    and (permissions['whitelist'] or permissions['mod'])
+                    and not permissions['blacklist']):
+                command_value = command[1].lower()
+                item = self.parse_item(command_value)
+                return self._complete_guess(item, username)
         except IndexError:
             self.logger.error('Command missing arguments')
+        return None
 
     def _complete_guess(self, item, username):
+        if not item:
+            self.logger.info('Item %s not found', item)
+            return
         expiration = datetime.now() - timedelta(minutes=15)
         first_guess = False
         for guess in self.guesses['item']:
@@ -110,7 +94,27 @@ class GuessingGame():
         self.guesses['item'] = deque()
         self.logger.info('Guesses completed')
 
+    def _set_guess_points(self, command):
+        try:
+            command_value = command[1].lower()
+            if int(command_value) > 0:
+                message = 'Set points value to %s' % command_value
+                self.streamer.points = command_value
+                self.streamer.save()
+                self.logger.info(message)
+                return message
+            message = 'Cannot set points value lower than 0'
+            self.logger.info(message)
+            return message
+        except ValueError:
+            message = 'Cannot convert %s to an integer' % command_value
+            self.logger.error(message)
+            return message
+
     def _do_item_guess(self, username, item):
+        if not item:
+            self.logger.info('Item %s not found', item)
+            return
         self._remove_stale_guesses(self.guesses['item'], username)
         now = datetime.now()
         guess = {
@@ -123,6 +127,10 @@ class GuessingGame():
         self.logger.debug(self.guesses['item'])
 
     def _do_medal_guess(self, username, medals):
+        if len(medals) < 5 or len(medals) < 6 and not self.freebie:
+            self.logger.info('Medal command incomplete')
+            self.logger.debug(medals)
+            return
         self._remove_stale_guesses(self.guesses['medal'], username)
         medal_guess = {
             "forest": None,
