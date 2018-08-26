@@ -60,22 +60,23 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         except IndexError:
             self.logger.error('User not found by Twitch API')
             return None
-        self.logger.debug('Found user ID %s' % user_id)
+        self.logger.debug('Found user ID %s', user_id)
         return user_id
 
     def get_channel_id(self):
         self.channel_id = self.get_user_id(self.channel_name)
-        self.logger.debug('Channel ID is %s' % self.channel_id)
+        self.logger.debug('Channel ID is %s', self.channel_id)
 
     def get_self_id(self):
         self.id = self.get_user_id(self.username)
-        self.logger.debug('Self ID is %s' % self.id)
+        self.logger.debug('Self ID is %s', self.id)
 
     def irc_connect(self):
         server = 'irc.chat.twitch.tv'
         port = 6667
         self.logger.info('Connecting to %s on port %s...' % (server, port))
-        irc.bot.SingleServerIRCBot.__init__(self, [(server, port, self.token)], self.username, self.username)
+        irc.bot.SingleServerIRCBot.__init__(
+            self, [(server, port, self.token)], self.username, self.username)
         self.logger.info('Connecting to database...')
 
     def database_connect(self):
@@ -93,8 +94,9 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
             self.streamer = streamer
 
         if not hasattr(self, 'streamer'):
-            self.logger.debug('Unable to find streamer with ID %s in the database' % self.channel_id)
-            self.logger.debug('Creating new entry for streamer with ID %s' % self.channel_id)
+            self.logger.debug(
+                'Unable to find streamer with ID %s in the database', self.channel_id)
+            self.logger.debug('Creating new entry for streamer with ID %s', self.channel_id)
             self.streamer = Streamer(name = self.channel_name, channel_id = self.channel_id)
             self.streamer.save()
 
@@ -148,12 +150,14 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         else:
             self.logger.debug('Built-in command not found')
             try:
-                streamer = Streamer.objects.get(channel_id = self.streamer.channel_id, commands__name = command_name) #pylint: disable=no-member
+                streamer = Streamer.objects.get( #pylint: disable=no-member
+                    channel_id = self.streamer.channel_id, commands__name = command_name)
                 for custom_command in streamer.commands:
                     self.logger.info('Custom command %s received' % custom_command.name)
                     connection.privmsg(self.channel, custom_command.output)
             except Streamer.DoesNotExist: #pylint: disable=no-member
-                self.logger.error('Custom command %s not found in database but is in command list' % command_name)
+                self.logger.error(
+                    'Custom command %s not found in database but is in command list', command_name)
 
     # Events
     def on_welcome(self, connection, event):
