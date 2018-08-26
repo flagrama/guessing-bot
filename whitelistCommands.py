@@ -49,11 +49,6 @@ def do_whitelist_command(twitch_bot, connection, command):
         else:
             connection.privmsg(twitch_bot.channel, 'Unable to remove user from blacklist')
         return
-    else:
-        item = command[2:]
-        guess_completed(item)
-        twitch_bot.logger.error('%s not implemented', whitelist_command_name)
-        return
 
 
 def get_username_from_command(command):

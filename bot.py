@@ -40,11 +40,12 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
             self.logger.setLevel(logging.INFO)
 
     def get_default_commands(self):
-        self.default_commands = ['!addcom', '!delcom', '!editcom']
-        self.whitelist_commands = ['!hud']
+        self.default_commands = ['!addcom', '!delcom', '!editcom', '!hud']
+        self.whitelist_commands = [
+            '!hud reset', '!hud add', '!hud remove', '!hud ban', '!hud unban'
+            ]
         self.commands = (
             self.default_commands
-            + self.whitelist_commands
             + self.guessing_game.commands
             )
         self.logger.debug(self.commands)
@@ -129,11 +130,13 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
     def do_command(self, event, command):
         connection = self.connection
         command_name = command[0]
-
-        if command_name in self.whitelist_commands:
-            if self.is_whitelist(event) or self.is_mod(event) and not self.is_blacklist(event):
-                whitelistCommands.do_whitelist_command(self, connection, command)
-        elif command_name in self.guessing_game.commands:
+        if len(command) > 1:
+            sub_command = command[1]
+            if ' '.join([command_name, sub_command]) in self.whitelist_commands:
+                if self.is_whitelist(event) or self.is_mod(event) and not self.is_blacklist(event):
+                    whitelistCommands.do_whitelist_command(self, connection, command)
+                    return
+        if command_name in self.guessing_game.commands:
             username = self.get_username(event)
             self.guessing_game.do_command(username, command)
         elif command_name in self.default_commands:
