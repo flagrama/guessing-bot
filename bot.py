@@ -122,6 +122,10 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
                     return True
         return False
 
+    def get_username(self, event):
+        user_string = event.source.split('!')
+        return user_string[0]
+
     def do_command(self, event, command):
         connection = self.connection
         command_name = command[0]
@@ -130,7 +134,8 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
             if self.is_whitelist(event) or self.is_mod(event) and not self.is_blacklist(event):
                 whitelistCommands.do_whitelist_command(self, connection, command)
         elif command_name in self.guessing_game.commands:
-            self.guessing_game.do_command(command)
+            username = self.get_username(event)
+            self.guessing_game.do_command(username, command)
         elif command_name in self.default_commands:
             if self.is_mod(event):
                 defaultCommands.do_default_command(self, connection, command)

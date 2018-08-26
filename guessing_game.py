@@ -9,15 +9,11 @@ class GuessingGame():
         """The constructor for GuessingGame class."""
         logging.basicConfig()
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
-
         self.commands = ['!guess']
         self.guesses = deque()
-
         self.medals = [
             'forest', 'fire', 'water', 'spirit', 'shadow', 'light'
         ]
-
         self.songs = [
             'lullaby', 'zelda', 'zeldas',
             'saria', 'sarias',
@@ -33,7 +29,9 @@ class GuessingGame():
             'prelude', 'yellownote'
         ]
 
-    def do_command(self, command):
+        self.logger.setLevel(logging.DEBUG)
+
+    def do_command(self, username, command):
         """
         The function to parse a command.
 
@@ -52,11 +50,11 @@ class GuessingGame():
                 now = datetime.now()
                 guess = {
                     "timestamp": now,
-                    "username": "",
+                    "username": username,
                     "guess": item
                 }
                 self.guesses.append(guess)
-                self.logger.info('%s Item %s guessed by user %s', now, item, '')
+                self.logger.info('%s Item %s guessed by user %s', now, item, username)
                 self.logger.debug(self.guesses)
         except IndexError:
             self.logger.error('Command missing arguments')
