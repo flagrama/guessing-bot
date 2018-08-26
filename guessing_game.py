@@ -1,5 +1,7 @@
 """This module provides an interface for running a guessing game."""
 import logging
+from datetime import datetime
+from collections import deque
 
 class GuessingGame():
     """This is a class for running a guessing game."""
@@ -10,6 +12,7 @@ class GuessingGame():
         self.logger.setLevel(logging.DEBUG)
 
         self.commands = ['!guess']
+        self.guesses = deque()
 
         self.medals = [
             'forest', 'fire', 'water', 'spirit', 'shadow', 'light'
@@ -46,7 +49,15 @@ class GuessingGame():
                 if not item:
                     self.logger.info('Item %s not found', command_value)
                     return
-                self.logger.info('Item %s guessed', item)
+                now = datetime.now()
+                guess = {
+                    "timestamp": now,
+                    "username": "",
+                    "guess": item
+                }
+                self.guesses.append(guess)
+                self.logger.info('%s Item %s guessed by user %s', now, item, '')
+                self.logger.debug(self.guesses)
         except IndexError:
             self.logger.error('Command missing arguments')
 
