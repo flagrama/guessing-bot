@@ -10,6 +10,7 @@ from database.streamer import Streamer
 import customCommands
 import defaultCommands
 import whitelistCommands
+import guessing_game
 
 class TwitchBot(irc.bot.SingleServerIRCBot):
     def __init__(self, debug):
@@ -20,6 +21,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         self.username = os.environ['TWITCH_BOT_NAME']
         self.channel_name = os.environ['TWITCH_CHANNEL']
         self.channel = '#%s' % self.channel_name
+        self.guessing_game = guessing_game.GuessingGame()
 
         self.get_default_commands()
         self.get_channel_id()
@@ -40,7 +42,11 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
     def get_default_commands(self):
         self.default_commands = ['!addcom', '!delcom', '!editcom']
         self.whitelist_commands = ['!hud']
-        self.commands = self.default_commands + self.whitelist_commands
+        self.commands = (
+            self.default_commands
+            + self.whitelist_commands
+            + self.guessing_game.commands
+            )
         self.logger.debug(self.commands)
 
     def get_user_id(self, username):
@@ -123,6 +129,8 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         if command_name in self.whitelist_commands:
             if self.is_whitelist(event) or self.is_mod(event) and not self.is_blacklist(event):
                 whitelistCommands.do_whitelist_command(self, connection, command)
+        elif command_name in self.guessing_game.commands:
+            self.guessing_game.do_command(command)
         elif command_name in self.default_commands:
             if self.is_mod(event):
                 defaultCommands.do_default_command(self, connection, command)
