@@ -82,6 +82,7 @@ def add_user_to_whitelist(twitch_bot, command):
     try:
         twitch_bot.streamer.whitelist.append(new_user)
         twitch_bot.streamer.save()
+        twitch_bot.streamer.reload()
         return True
     except mongodb.NotUniqueError:
         twitch_bot.logger.error('User with ID %s already exists in the database' % new_user_id)
@@ -105,6 +106,7 @@ def remove_user_from_whitelist(twitch_bot, command):
             return False
         Streamer.objects.update(channel_id = twitch_bot.streamer.channel_id, pull__whitelist__user_id = existing_user_id) #pylint: disable=no-member
         twitch_bot.streamer.save()
+        twitch_bot.streamer.reload()
         return True
     except Streamer.DoesNotExist: #pylint: disable=no-member
         twitch_bot.logger.error('User with ID %s does not exist in the database' % existing_user_id)
@@ -134,6 +136,7 @@ def add_user_to_blacklist(twitch_bot, command):
     try:
         twitch_bot.streamer.blacklist.append(new_user)
         twitch_bot.streamer.save()
+        twitch_bot.streamer.reload()
         return True
     except mongodb.NotUniqueError:
         twitch_bot.logger.error('User with ID %s already exists in the database' % new_user_id)
@@ -157,12 +160,9 @@ def remove_user_from_blacklist(twitch_bot, command):
             return False
         Streamer.objects.update(channel_id = twitch_bot.streamer.channel_id, pull__blacklist__user_id = existing_user_id) #pylint: disable=no-member
         twitch_bot.streamer.save()
+        twitch_bot.streamer.reload()
         return True
     except Streamer.DoesNotExist: #pylint: disable=no-member
         twitch_bot.logger.error('User with ID %s does not exist in the database' % existing_user_id)
         return False
-
-
-def guess_completed(item):
-    return
 
