@@ -9,25 +9,34 @@ class GuessingGame():
         """The constructor for GuessingGame class."""
         logging.basicConfig()
         self.logger = logging.getLogger(__name__)
+        self.running = False
+        self.freebie = None
         self.commands = ['!guess', '!hud']
-        self.guesses = deque()
-        self.medals = [
-            'forest', 'fire', 'water', 'spirit', 'shadow', 'light'
-        ]
-        self.songs = [
-            'lullaby', 'zelda', 'zeldas',
-            'saria', 'sarias',
-            'epona', 'eponas',
-            'sunsong', 'sun', 'suns',
-            'songoftime', 'time', 'sot',
-            'songofstorms', 'storm', 'storms', 'sos',
-            'minuet', 'greenote',
-            'bolero', 'rednote',
-            'serenade', 'bluenote',
-            'requiem', 'orangenote',
-            'nocturne', 'purplenote',
-            'prelude', 'yellownote'
-        ]
+        self.guesses = {
+            "item": deque(),
+            "medal": deque(),
+            "song": deque()
+        }
+        self.guessables = {
+            "dungeons": [
+                'deku', 'dodongo', 'jabu',
+                'forest', 'fire', 'water', 'shadow', 'spirit', 'light'
+            ],
+            "songs": [
+                'lullaby', 'zelda', 'zeldas',
+                'saria', 'sarias',
+                'epona', 'eponas',
+                'sunsong', 'sun', 'suns',
+                'songoftime', 'time', 'sot',
+                'songofstorms', 'storm', 'storms', 'sos',
+                'minuet', 'greenote',
+                'bolero', 'rednote',
+                'serenade', 'bluenote',
+                'requiem', 'orangenote',
+                'nocturne', 'purplenote',
+                'prelude', 'yellownote'
+            ]
+        }
 
         self.logger.setLevel(logging.DEBUG)
 
@@ -36,59 +45,101 @@ class GuessingGame():
         The function to parse a command.
 
         Parameters:
+            username (string): The username of the command sender
             command (string[]): A list of the command and its arguments
         """
         try:
             command_name = command[0].lower()
             command_value = command[1].lower()
-
             if command_name == '!guess':
+                if len(command) > 2:
+                    subcommand_name = command[1].lower()
+                    command_value = command[2:]
+                    if subcommand_name == 'medal':
+                        if len(command_value) < 5 or len(command_value) < 6 and not self.freebie:
+                            self.logger.info('Medal command incomplete')
+                            self.logger.debug(command_value)
+                            return
+                        self._do_medal_guess(username, command_value)
+                        return
                 item = self.parse_item(command_value)
                 if not item:
                     self.logger.info('Item %s not found', command_value)
                     return
-                self._remove_stale_guesses(username)
-                now = datetime.now()
-                guess = {
-                    "timestamp": now,
-                    "username": username,
-                    "guess": item
-                }
-                self.guesses.append(guess)
-                self.logger.info('%s Item %s guessed by user %s', now, item, username)
-                self.logger.debug(self.guesses)
+                self._do_item_guess(username, item)
 
             if command_name == '!hud':
                 item = self.parse_item(command_value)
                 if not item:
                     self.logger.info('Item %s not found', command_value)
                     return
-                expiration = datetime.now() - timedelta(minutes=15)
-                first_guess = False
-                for guess in self.guesses:
-                    if guess['timestamp'] < expiration:
-                        continue
-                    if guess['guess'] is not item:
-                        continue
-                    if not first_guess:
-                        self.logger.info('User %s made the first correct guess', username)
-                        first_guess = True
-                    self.logger.info('User %s guessed correctly', username)
-                self.guesses = deque()
-                self.logger.info('Guesses completed')
+                self._complete_guess(item, username)
         except IndexError:
             self.logger.error('Command missing arguments')
 
-    def _remove_stale_guesses(self, username):
+    def _complete_guess(self, item, username):
+        expiration = datetime.now() - timedelta(minutes=15)
+        first_guess = False
+        for guess in self.guesses['item']:
+            if guess['timestamp'] < expiration:
+                continue
+            if guess['guess'] is not item:
+                continue
+            if not first_guess:
+                self.logger.info('User %s made the first correct guess', username)
+                first_guess = True
+            self.logger.info('User %s guessed correctly', username)
+        self.guesses['item'] = deque()
+        self.logger.info('Guesses completed')
+
+    def _do_item_guess(self, username, item):
+        self._remove_stale_guesses(self.guesses['item'], username)
+        now = datetime.now()
+        guess = {
+            "timestamp": now,
+            "username": username,
+            "guess": item
+        }
+        self.guesses['item'].append(guess)
+        self.logger.info('%s Item %s guessed by user %s', now, item, username)
+        self.logger.debug(self.guesses['item'])
+
+    def _do_medal_guess(self, username, medals):
+        self._remove_stale_guesses(self.guesses['medal'], username)
+        medal_guess = {
+            "forest": None,
+            "fire": None,
+            "water": None,
+            "shadow": None,
+            "spirit": None,
+            "light": None
+        }
+        i = 0
+        for medal in medal_guess:
+            guess = medals[i].lower()
+            if guess not in self.guessables['dungeons'] and guess != 'pocket':
+                self.logger.info('Invalid medal %s', guess)
+                return
+            if medal == self.freebie or guess == 'pocket':
+                continue
+            medal_guess[medal] = guess
+            i += 1
+        medal_guess['username'] = username
+        medal_guess['timestamp'] = datetime.now()
+        self.guesses['medal'].append(medal_guess)
+        self.logger.debug(medal_guess)
+
+    @staticmethod
+    def _remove_stale_guesses(guess_queue, username):
         new_queue = deque()
         expiration = datetime.now() - timedelta(minutes=15)
-        for guess in self.guesses:
+        for guess in guess_queue:
             if guess['timestamp'] < expiration:
                 continue
             if guess['username'] == username:
                 continue
             new_queue.append(guess)
-        self.guesses = new_queue
+        guess_queue = new_queue
 
     # Integrate with the database in the future
     @staticmethod
