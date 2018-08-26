@@ -9,7 +9,7 @@ class GuessingGame():
         """The constructor for GuessingGame class."""
         logging.basicConfig()
         self.logger = logging.getLogger(__name__)
-        self.commands = ['!guess']
+        self.commands = ['!guess', '!hud']
         self.guesses = deque()
         self.medals = [
             'forest', 'fire', 'water', 'spirit', 'shadow', 'light'
@@ -57,6 +57,25 @@ class GuessingGame():
                 self.guesses.append(guess)
                 self.logger.info('%s Item %s guessed by user %s', now, item, username)
                 self.logger.debug(self.guesses)
+
+            if command_name == '!hud':
+                item = self.parse_item(command_value)
+                if not item:
+                    self.logger.info('Item %s not found', command_value)
+                    return
+                expiration = datetime.now() - timedelta(minutes=15)
+                first_guess = False
+                for guess in self.guesses:
+                    if guess['timestamp'] < expiration:
+                        continue
+                    if guess['guess'] is not item:
+                        continue
+                    if not first_guess:
+                        self.logger.info('User %s made the first correct guess', username)
+                        first_guess = True
+                    self.logger.info('User %s guessed correctly', username)
+                self.guesses = deque()
+                self.logger.info('Guesses completed')
         except IndexError:
             self.logger.error('Command missing arguments')
 
