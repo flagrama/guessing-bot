@@ -4,8 +4,9 @@ from database.whitelist import WhitelistUser, BlacklistUser
 
 
 class Streamer(mongodb.Document):
-    name = mongodb.StringField(required = True)
-    channel_id = mongodb.StringField(required = True, unique = True)
+    name = mongodb.StringField(required=True)
+    channel_id = mongodb.StringField(required=True, unique=True)
+    points = mongodb.IntField()
     commands = mongodb.ListField(mongodb.EmbeddedDocumentField(Command))
     # participants = mongodb.ListField(mongodb.EmbeddedDocumentField("Participant"))
     whitelist = mongodb.ListField(mongodb.EmbeddedDocumentField(WhitelistUser))

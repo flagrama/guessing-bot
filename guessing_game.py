@@ -5,13 +5,14 @@ from collections import deque
 
 class GuessingGame():
     """This is a class for running a guessing game."""
-    def __init__(self):
+    def __init__(self, streamer):
         """The constructor for GuessingGame class."""
         logging.basicConfig()
         self.logger = logging.getLogger(__name__)
+        self.streamer = streamer
         self.running = False
         self.freebie = None
-        self.commands = ['!guess', '!hud']
+        self.commands = ['!guess', '!hud', '!guesspoints']
         self.guesses = {
             "item": deque(),
             "medal": deque(),
@@ -51,6 +52,22 @@ class GuessingGame():
         try:
             command_name = command[0].lower()
             command_value = command[1].lower()
+            if command_name == '!guesspoints':
+                    try:
+                        if int(command_value) > 0:
+                            message = 'Set points value to %s' % command_value
+                            self.streamer.points = command_value
+                            self.streamer.save()
+                            self.logger.info(message)
+                            return message
+                        message = 'Cannot set points value lower than 0'
+                        self.logger.info(message)
+                        return message
+                    except ValueError:
+                        message = 'Cannot convert %s to an integer' % command_value
+                        self.logger.error(message)
+                        return message
+
             if command_name == '!guess':
                 if len(command) > 2:
                     subcommand_name = command[1].lower()
@@ -59,20 +76,20 @@ class GuessingGame():
                         if len(command_value) < 5 or len(command_value) < 6 and not self.freebie:
                             self.logger.info('Medal command incomplete')
                             self.logger.debug(command_value)
-                            return
+                            return ''
                         self._do_medal_guess(username, command_value)
-                        return
+                        return ''
                 item = self.parse_item(command_value)
                 if not item:
                     self.logger.info('Item %s not found', command_value)
-                    return
+                    return ''
                 self._do_item_guess(username, item)
 
             if command_name == '!hud':
                 item = self.parse_item(command_value)
                 if not item:
                     self.logger.info('Item %s not found', command_value)
-                    return
+                    return ''
                 self._complete_guess(item, username)
         except IndexError:
             self.logger.error('Command missing arguments')

@@ -21,7 +21,6 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         self.username = os.environ['TWITCH_BOT_NAME']
         self.channel_name = os.environ['TWITCH_CHANNEL']
         self.channel = '#%s' % self.channel_name
-        self.guessing_game = guessing_game.GuessingGame()
 
         self.get_default_commands()
         self.get_channel_id()
@@ -29,6 +28,8 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         self.irc_connect()
         self.database_connect()
         self.get_streamer_from_database()
+        self.guessing_game = guessing_game.GuessingGame(self.streamer)
+        self.commands += self.guessing_game.commands
 
     # Methods
     def init_logging(self, debug):
@@ -44,10 +45,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         self.whitelist_commands = [
             '!hud reset', '!hud add', '!hud remove', '!hud ban', '!hud unban'
             ]
-        self.commands = (
-            self.default_commands
-            + self.guessing_game.commands
-            )
+        self.commands = self.default_commands
         self.logger.debug(self.commands)
 
     def get_user_id(self, username):
@@ -74,7 +72,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
     def irc_connect(self):
         server = 'irc.chat.twitch.tv'
         port = 6667
-        self.logger.info('Connecting to %s on port %s...' % (server, port))
+        self.logger.info('Connecting to %s on port %s...', server, port)
         irc.bot.SingleServerIRCBot.__init__(
             self, [(server, port, self.token)], self.username, self.username)
         self.logger.info('Connecting to database...')
@@ -142,26 +140,27 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
                 return
         if (command_name in self.guessing_game.commands
                 and ((is_whitelist or is_mod) and not is_blacklist)):
-            self.guessing_game.do_command(username, command)
+            message = self.guessing_game.do_command(username, command)
+            if message:
+                self.connection.privmsg(self.channel, message)
             return
-        elif command_name in self.default_commands and is_mod:
+        if command_name in self.default_commands and is_mod:
             defaultCommands.do_default_command(self, connection, command)
             return
-        else:
-            self.logger.debug('Built-in command not found')
-            try:
-                streamer = Streamer.objects.get( #pylint: disable=no-member
-                    channel_id = self.streamer.channel_id, commands__name = command_name)
-                for custom_command in streamer.commands:
-                    self.logger.info('Custom command %s received' % custom_command.name)
-                    connection.privmsg(self.channel, custom_command.output)
-            except Streamer.DoesNotExist: #pylint: disable=no-member
-                self.logger.error(
-                    'Custom command %s not found in database but is in command list', command_name)
+        self.logger.debug('Built-in command not found')
+        try:
+            streamer = Streamer.objects.get( #pylint: disable=no-member
+                channel_id = self.streamer.channel_id, commands__name = command_name)
+            for custom_command in streamer.commands:
+                self.logger.info('Custom command %s received', custom_command.name)
+                connection.privmsg(self.channel, custom_command.output)
+        except Streamer.DoesNotExist: #pylint: disable=no-member
+            self.logger.error(
+                'Custom command %s not found in database but is in command list', command_name)
 
     # Events
     def on_welcome(self, connection, event):
-        self.logger.info('Joining %s' % self.channel)
+        self.logger.info('Joining %s', self.channel)
         self.logger.debug(event)
 
         connection.cap('REQ', ':twitch.tv/membership')
