@@ -102,48 +102,49 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
             self.commands += [command.name]
         self.logger.debug(self.commands)
 
-    def is_mod(self, event):
-        for tag in event.tags:
-                if tag['key'] == 'user-id' or tag['key'] == 'mod':
-                    if tag['value'] == self.channel_id or tag['value'] == '1':
-                        return True
-        return False
+    def get_user_permissions(self, event):
+        mod = False
+        whitelist = False
+        blacklist = False
+        username = ''
 
-    def is_whitelist(self, event):
-        for tag in event.tags:
-            if tag['key'] == 'user-id':
-                if Streamer.objects.filter(channel_id = self.streamer.channel_id, whitelist__user_id = tag['value']): #pylint: disable=no-member
-                    return True
-        return False
-
-    def is_blacklist(self, event):
-        for tag in event.tags:
-            if tag['key'] == 'user-id':
-                if Streamer.objects.filter(channel_id = self.streamer.channel_id, blacklist__user_id = tag['value']): #pylint: disable=no-member
-                    return True
-        return False
-
-    def get_username(self, event):
         user_string = event.source.split('!')
-        return user_string[0]
+        username = user_string[0]
+        for tag in event.tags:
+            if tag['key'] == 'user-id':
+                if tag['value'] == self.channel_id:
+                    mod = True
+                if Streamer.objects.filter( #pylint: disable=no-member
+                    channel_id=self.streamer.channel_id,
+                    whitelist__user_id=tag['value']):
+                        whitelist = True
+                if Streamer.objects.filter( #pylint: disable=no-member
+                    channel_id=self.streamer.channel_id,
+                    blacklist__user_id=tag['value']):
+                        blacklist = True
+            if tag['key'] == 'mod':
+                if tag['value'] == 1:
+                    mod = True
+        return username, mod, whitelist, blacklist
 
     def do_command(self, event, command):
         connection = self.connection
         command_name = command[0]
+        username, is_mod, is_whitelist, is_blacklist = self.get_user_permissions(event)
+
         if len(command) > 1:
             sub_command = command[1]
-            if ' '.join([command_name, sub_command]) in self.whitelist_commands:
-                if self.is_whitelist(event) or self.is_mod(event) and not self.is_blacklist(event):
-                    whitelistCommands.do_whitelist_command(self, connection, command)
-                    return
-        if command_name in self.guessing_game.commands:
-            username = self.get_username(event)
-            self.guessing_game.do_command(username, command)
-        elif command_name in self.default_commands:
-            if self.is_mod(event):
-                defaultCommands.do_default_command(self, connection, command)
+            if (' '.join([command_name, sub_command]) in self.whitelist_commands
+                    and ((is_whitelist or is_mod) and not is_blacklist)):
+                whitelistCommands.do_whitelist_command(self, connection, command)
                 return
-            self.logger.info('User attempted to use a moderator-only command')
+        if (command_name in self.guessing_game.commands
+                and ((is_whitelist or is_mod) and not is_blacklist)):
+            self.guessing_game.do_command(username, command)
+            return
+        elif command_name in self.default_commands and is_mod:
+            defaultCommands.do_default_command(self, connection, command)
+            return
         else:
             self.logger.debug('Built-in command not found')
             try:
