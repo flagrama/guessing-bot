@@ -1,6 +1,6 @@
 """This module provides an interface for running a guessing game."""
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from collections import deque
 
 class GuessingGame():
@@ -47,6 +47,7 @@ class GuessingGame():
                 if not item:
                     self.logger.info('Item %s not found', command_value)
                     return
+                self._remove_stale_guesses(username)
                 now = datetime.now()
                 guess = {
                     "timestamp": now,
@@ -58,6 +59,17 @@ class GuessingGame():
                 self.logger.debug(self.guesses)
         except IndexError:
             self.logger.error('Command missing arguments')
+
+    def _remove_stale_guesses(self, username):
+        new_queue = deque()
+        expiration = datetime.now() - timedelta(minutes=15)
+        for guess in self.guesses:
+            if guess['timestamp'] < expiration:
+                continue
+            if guess['username'] == username:
+                continue
+            new_queue.append(guess)
+        self.guesses = new_queue
 
     # Integrate with the database in the future
     @staticmethod
