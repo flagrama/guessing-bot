@@ -138,9 +138,13 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
                     and ((is_whitelist or is_mod) and not is_blacklist)):
                 whitelistCommands.do_whitelist_command(self, connection, command)
                 return
-        if (command_name in self.guessing_game.commands
-                and ((is_whitelist or is_mod) and not is_blacklist)):
-            message = self.guessing_game.do_command(username, command)
+        if command_name in self.guessing_game.commands:
+            message = self.guessing_game.do_command(
+                username,
+                is_whitelist,
+                is_mod,
+                is_blacklist,
+                command)
             if message:
                 self.connection.privmsg(self.channel, message)
             return

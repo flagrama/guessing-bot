@@ -41,7 +41,7 @@ class GuessingGame():
 
         self.logger.setLevel(logging.DEBUG)
 
-    def do_command(self, username, command):
+    def do_command(self, username, is_whitelist, is_mod, is_blacklist, command):
         """
         The function to parse a command.
 
@@ -51,22 +51,22 @@ class GuessingGame():
         """
         try:
             command_name = command[0].lower()
-            command_value = command[1].lower()
-            if command_name == '!guesspoints':
-                    try:
-                        if int(command_value) > 0:
-                            message = 'Set points value to %s' % command_value
-                            self.streamer.points = command_value
-                            self.streamer.save()
-                            self.logger.info(message)
-                            return message
-                        message = 'Cannot set points value lower than 0'
+            if command_name == '!guesspoints' and (is_whitelist or is_mod) and not is_blacklist:
+                try:
+                    command_value = command[1].lower()
+                    if int(command_value) > 0:
+                        message = 'Set points value to %s' % command_value
+                        self.streamer.points = command_value
+                        self.streamer.save()
                         self.logger.info(message)
                         return message
-                    except ValueError:
-                        message = 'Cannot convert %s to an integer' % command_value
-                        self.logger.error(message)
-                        return message
+                    message = 'Cannot set points value lower than 0'
+                    self.logger.info(message)
+                    return message
+                except ValueError:
+                    message = 'Cannot convert %s to an integer' % command_value
+                    self.logger.error(message)
+                    return message
 
             if command_name == '!guess':
                 if len(command) > 2:
@@ -85,7 +85,8 @@ class GuessingGame():
                     return ''
                 self._do_item_guess(username, item)
 
-            if command_name == '!hud':
+            if command_name == '!hud' and (is_whitelist or is_mod) and not is_blacklist:
+                command_value = command[1].lower()
                 item = self.parse_item(command_value)
                 if not item:
                     self.logger.info('Item %s not found', command_value)
