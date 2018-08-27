@@ -13,9 +13,16 @@ class GuessingGame():
         logging.basicConfig()
         self.logger = logging.getLogger(__name__)
         self.streamer = streamer
-        self.running = False
-        self.freebie = None
-        self.commands = ['!guess', '!hud', '!points', '!guesspoints', '!firstguess']
+        self.state = {
+            "running": False,
+            "freebie": None,
+            "mode": {
+                "name": "normal"
+            }
+        }
+        self.commands = [
+            '!guess', '!hud', '!points', '!guesspoints', '!firstguess'
+        ]
         self.guesses = {
             "item": deque(),
             "medal": deque(),
@@ -49,8 +56,8 @@ class GuessingGame():
         The function to parse a command.
 
         Parameters:
-            username (dict): A dictionary containing the username and user_id of the sender
-            permissions( dict): A dictionary containing the user permissions of the sender
+            user (dict): A dictionary containing the username and user_id of the sender
+            permissions (dict): A dictionary containing the user permissions of the sender
             command (string[]): A list containing the command and its arguments
         """
         try:
@@ -210,7 +217,7 @@ class GuessingGame():
             streamer = Streamer.objects.get( #pylint: disable=no-member
                 channel_id=channel, participants__username=username)
             if streamer.participants:
-                return '%s has %s points' % (username, streamer.participants[0].total_points)
+                return '%s has %s total points' % (username, streamer.participants[0].total_points)
         except Streamer.DoesNotExist: #pylint: disable=no-member
             self.logger.error('Participant with username %s does not exist in the database',
                               username)
@@ -233,7 +240,7 @@ class GuessingGame():
         self.logger.debug(self.guesses['item'])
 
     def _do_medal_guess(self, user, medals):
-        if len(medals) < 5 or len(medals) < 6 and not self.freebie:
+        if len(medals) < 5 or len(medals) < 6 and not self.state['freebie']:
             self.logger.info('Medal command incomplete')
             self.logger.debug(medals)
             return
@@ -252,7 +259,7 @@ class GuessingGame():
             if guess not in self.guessables['dungeons'] and guess != 'pocket':
                 self.logger.info('Invalid medal %s', guess)
                 return
-            if medal == self.freebie or guess == 'pocket':
+            if medal == self.state['freebie'] or guess == 'pocket':
                 continue
             medal_guess[medal] = guess
             i += 1
@@ -262,11 +269,15 @@ class GuessingGame():
         self.logger.debug(medal_guess)
 
     def _reset_guessing_game(self):
+        mode = {
+            "name": "normal"
+        }
         self.guesses['item'] = deque()
         self.guesses['medal'] = deque()
         self.guesses['song'] = deque()
-        self.running = False
-        self.freebie = None
+        self.state['running'] = False
+        self.state['freebie'] = None
+        self.state['mode'] = mode
         for participant in self.streamer.participants:
             participant.session_points = 0
         self.streamer.save()
