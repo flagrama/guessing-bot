@@ -72,7 +72,14 @@ class GuessingGame():
 
             if command_name == '!points':
                 if len(command) > 1:
-                    username = command[1]
+                    if command[1] == 'total':
+                        if len(command) > 2:
+                            username = command[2]
+                        else:
+                            username = user['username']
+                        return self._do_total_points_check(user['channel-id'], username)
+                    else:
+                        username = command[1]
                 else:
                     username = user['username']
                 return self._do_points_check(user['channel-id'], username)
@@ -155,6 +162,17 @@ class GuessingGame():
                 channel_id=channel, participants__username=username)
             if streamer.participants:
                 return '%s has %s points' % (username, streamer.participants[0].session_points)
+        except Streamer.DoesNotExist: #pylint: disable=no-member
+            self.logger.error('Participant with username %s does not exist in the database',
+                              username)
+        return None
+
+    def _do_total_points_check(self, channel, username):
+        try:
+            streamer = Streamer.objects.get( #pylint: disable=no-member
+                channel_id=channel, participants__username=username)
+            if streamer.participants:
+                return '%s has %s points' % (username, streamer.participants[0].total_points)
         except Streamer.DoesNotExist: #pylint: disable=no-member
             self.logger.error('Participant with username %s does not exist in the database',
                               username)
