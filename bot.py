@@ -43,7 +43,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
     def get_default_commands(self):
         self.default_commands = ['!addcom', '!delcom', '!editcom', '!hud']
         self.whitelist_commands = [
-            '!hud reset', '!hud add', '!hud remove', '!hud ban', '!hud unban'
+            '!hud add', '!hud remove', '!hud ban', '!hud unban'
             ]
         self.commands = self.default_commands
         self.logger.debug(self.commands)

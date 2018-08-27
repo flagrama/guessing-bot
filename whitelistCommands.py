@@ -11,43 +11,36 @@ def do_whitelist_command(twitch_bot, connection, command):
         twitch_bot.logger.error('Incomplete command')
         return
 
-    if whitelist_command_name == 'reset':
-        twitch_bot.logger.error('%s not implemented', whitelist_command_name)
-        return
-    elif whitelist_command_name == 'add':
+    if whitelist_command_name == 'add':
         if add_user_to_whitelist(twitch_bot, command):
             message = 'User %s added to whitelist' % command[2]
             connection.privmsg(twitch_bot.channel, message)
             twitch_bot.logger.info(message)
             return
-        else:
-            connection.privmsg(twitch_bot.channel, 'Unable to add user to whitelist')
-    elif whitelist_command_name == 'remove':
+        connection.privmsg(twitch_bot.channel, 'Unable to add user to whitelist')
+    if whitelist_command_name == 'remove':
         if remove_user_from_whitelist(twitch_bot, command):
             message = 'User %s removed from whitelist' % command[2]
             connection.privmsg(twitch_bot.channel, message)
             twitch_bot.logger.info(message)
             return
-        else:
-            connection.privmsg(twitch_bot.channel, 'Unable to remove user from whitelist')
+        connection.privmsg(twitch_bot.channel, 'Unable to remove user from whitelist')
         return
-    elif whitelist_command_name == 'ban':
+    if whitelist_command_name == 'ban':
         if add_user_to_blacklist(twitch_bot, command):
             message = 'User %s added to blacklist' % command[2]
             connection.privmsg(twitch_bot.channel, message)
             twitch_bot.logger.info(message)
             return
-        else:
-            connection.privmsg(twitch_bot.channel, 'Unable to add user to blacklist')
+        connection.privmsg(twitch_bot.channel, 'Unable to add user to blacklist')
         return
-    elif whitelist_command_name == 'unban':
+    if whitelist_command_name == 'unban':
         if remove_user_from_blacklist(twitch_bot, command):
             message = 'User %s removed from blacklist' % command[2]
             connection.privmsg(twitch_bot.channel, message)
             twitch_bot.logger.info(message)
             return
-        else:
-            connection.privmsg(twitch_bot.channel, 'Unable to remove user from blacklist')
+        connection.privmsg(twitch_bot.channel, 'Unable to remove user from blacklist')
         return
 
 

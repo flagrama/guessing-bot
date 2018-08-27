@@ -186,6 +186,10 @@ class GuessingGame():
         return self._do_points_check(user['channel-id'], username)
 
     def _hud_command(self, command, user):
+        if len(command) > 1:
+            sub_command = command[1]
+            if sub_command == 'reset':
+                return self._reset_guessing_game()
         command_value = command[1].lower()
         item = self.parse_item(command_value)
         return self._complete_guess(item, user['channel-id'])
@@ -256,6 +260,17 @@ class GuessingGame():
         medal_guess['timestamp'] = datetime.now()
         self.guesses['medal'].append(medal_guess)
         self.logger.debug(medal_guess)
+
+    def _reset_guessing_game(self):
+        self.guesses['item'] = deque()
+        self.guesses['medal'] = deque()
+        self.guesses['song'] = deque()
+        self.running = False
+        self.freebie = None
+        for participant in self.streamer.participants:
+            participant.session_points = 0
+        self.streamer.save()
+        self.streamer.reload()
 
     @staticmethod
     def _remove_stale_guesses(guess_queue, username):
