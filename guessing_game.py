@@ -15,7 +15,7 @@ class GuessingGame():
         self.streamer = streamer
         self.running = False
         self.freebie = None
-        self.commands = ['!guess', '!hud', '!points', '!guesspoints']
+        self.commands = ['!guess', '!hud', '!points', '!guesspoints', '!firstguess']
         self.guesses = {
             "item": deque(),
             "medal": deque(),
@@ -59,6 +59,11 @@ class GuessingGame():
                     and (permissions['whitelist'] or permissions['mod'])
                     and not permissions['blacklist']):
                 return self._set_guess_points(command)
+
+            if (command_name == '!firstguess'
+                    and (permissions['whitelist'] or permissions['mod'])
+                    and not permissions['blacklist']):
+                return self._set_first_guess(command)
 
             if command_name == '!guess':
                 if len(command) > 2:
@@ -127,6 +132,9 @@ class GuessingGame():
                 self.logger.error('Participant with ID %s does not exist in the database',
                                   guess['user-id'])
             if not first_guess:
+                for update_participant in streamer.participants:
+                    update_participant.session_points += self.streamer.first_bonus
+                    update_participant.total_points += self.streamer.first_bonus
                 self.logger.info('User %s made the first correct guess', guess['username'])
                 first_guess = True
             for update_participant in streamer.participants:
@@ -144,11 +152,28 @@ class GuessingGame():
             command_value = command[1].lower()
             if int(command_value) > 0:
                 message = 'Set points value to %s' % command_value
-                self.streamer.points = command_value
+                self.streamer.points = int(command_value)
                 self.streamer.save()
                 self.logger.info(message)
                 return message
             message = 'Cannot set points value lower than 0'
+            self.logger.info(message)
+            return message
+        except ValueError:
+            message = 'Cannot convert %s to an integer' % command_value
+            self.logger.error(message)
+            return message
+
+    def _set_first_guess(self, command):
+        try:
+            command_value = command[1].lower()
+            if int(command_value) > 0:
+                message = 'Set first guess bonus to %s' % command_value
+                self.streamer.first_bonus = int(command_value)
+                self.streamer.save()
+                self.logger.info(message)
+                return message
+            message = 'Cannot set first guess bonus lower than 0'
             self.logger.info(message)
             return message
         except ValueError:

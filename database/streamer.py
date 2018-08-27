@@ -7,6 +7,7 @@ from database.participant import Participant
 class Streamer(mongodb.Document):
     name = mongodb.StringField(required=True)
     channel_id = mongodb.StringField(required=True, unique=True)
+    first_bonus = mongodb.IntField(default=1)
     points = mongodb.IntField(default=1)
     commands = mongodb.ListField(mongodb.EmbeddedDocumentField(Command))
     participants = mongodb.ListField(mongodb.EmbeddedDocumentField(Participant))
