@@ -15,7 +15,7 @@ class GuessingGame():
         self.streamer = streamer
         self.running = False
         self.freebie = None
-        self.commands = ['!guess', '!hud', '!guesspoints']
+        self.commands = ['!guess', '!hud', '!points', '!guesspoints']
         self.guesses = {
             "item": deque(),
             "medal": deque(),
@@ -68,7 +68,14 @@ class GuessingGame():
                         return self._do_medal_guess(user, command_value)
                 command_value = command[1].lower()
                 item = self.parse_item(command_value)
-                self._do_item_guess(user, item)
+                return self._do_item_guess(user, item)
+
+            if command_name == '!points':
+                if len(command) > 1:
+                    username = command[1]
+                else:
+                    username = user['username']
+                return self._do_points_check(user['channel-id'], username)
 
             if (command_name == '!hud'
                     and (permissions['whitelist'] or permissions['mod'])
@@ -141,6 +148,17 @@ class GuessingGame():
             message = 'Cannot convert %s to an integer' % command_value
             self.logger.error(message)
             return message
+
+    def _do_points_check(self, channel, username):
+        try:
+            streamer = Streamer.objects.get( #pylint: disable=no-member
+                channel_id=channel, participants__username=username)
+            if streamer.participants:
+                return '%s has %s points' % (username, streamer.participants[0].session_points)
+        except Streamer.DoesNotExist: #pylint: disable=no-member
+            self.logger.error('Participant with username %s does not exist in the database',
+                              username)
+        return None
 
     def _do_item_guess(self, user, item):
         if not item:
