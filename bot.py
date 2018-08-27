@@ -130,7 +130,8 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         }
         user = {
             "username": user_string[0],
-            "user-id": self.get_user_id(user_string[0])
+            "user-id": self.get_user_id(user_string[0]),
+            "channel-id": self.channel_id
         }
         return user, permissions
 

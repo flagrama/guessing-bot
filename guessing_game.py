@@ -3,6 +3,9 @@ import logging
 from datetime import datetime, timedelta
 from collections import deque
 
+from database.streamer import Streamer
+from database.participant import Participant
+
 class GuessingGame():
     """This is a class for running a guessing game."""
     def __init__(self, streamer):
@@ -72,26 +75,53 @@ class GuessingGame():
                     and not permissions['blacklist']):
                 command_value = command[1].lower()
                 item = self.parse_item(command_value)
-                return self._complete_guess(item)
+                return self._complete_guess(item, user['channel-id'])
         except IndexError:
             self.logger.error('Command missing arguments')
         return None
 
-    def _complete_guess(self, item):
+    def _complete_guess(self, item, channel):
         if not item:
             self.logger.info('Item %s not found', item)
             return
         expiration = datetime.now() - timedelta(minutes=15)
         first_guess = False
+        participant = None
+        streamer = None
         for guess in self.guesses['item']:
             if guess['timestamp'] < expiration:
                 continue
             if guess['guess'] is not item:
                 continue
+            try:
+                streamer = Streamer.objects.get( #pylint: disable=no-member
+                    channel_id=channel, participants__user_id=guess['user-id'])
+                if streamer.participants:
+                    participant = streamer.participants[0]
+            except Streamer.DoesNotExist: #pylint: disable=no-member
+                participant = Participant(
+                    username=guess['username'],
+                    user_id=guess['user-id'],
+                    session_points=0,
+                    total_points=0)
+                self.streamer.participants.append(participant)
+                self.streamer.save()
+                self.streamer.reload()
+                streamer = Streamer.objects.get( #pylint: disable=no-member
+                    channel_id=channel, participants__user_id=guess['user-id'])
+                participant = streamer.participants[0]
+                self.logger.error('Participant with ID %s does not exist in the database',
+                                  guess['user-id'])
             if not first_guess:
                 self.logger.info('User %s made the first correct guess', guess['username'])
                 first_guess = True
-            self.logger.info('User %s guessed correctly', guess['username'])
+            for update_participant in streamer.participants:
+                update_participant.session_points += self.streamer.points
+                update_participant.total_points += self.streamer.points
+            self.logger.info('User %s guessed correctly and earned %s points',
+                             guess['username'], self.streamer.points)
+        streamer.save()
+        streamer.reload()
         self.guesses['item'] = deque()
         self.logger.info('Guesses completed')
 
@@ -120,6 +150,7 @@ class GuessingGame():
         now = datetime.now()
         guess = {
             "timestamp": now,
+            "user-id": user['user-id'],
             "username": user['username'],
             "guess": item
         }
