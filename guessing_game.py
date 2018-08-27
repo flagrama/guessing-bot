@@ -179,18 +179,18 @@ class GuessingGame():
         return self._do_item_guess(user, item)
 
     def _points_command(self, command, user):
-        if len(command) > 1:
+        channel = user['channel-id']
+        if len(command) == 1:
+            return self._do_points_check(channel, user['username'])
+        if len(command) == 2:
             if command[1] == 'total':
-                if len(command) > 2:
-                    username = command[2]
-                else:
-                    username = user['username']
-                return self._do_total_points_check(user['channel-id'], username)
-            else:
-                username = command[1]
-        else:
-            username = user['username']
-        return self._do_points_check(user['channel-id'], username)
+                return self._do_total_points_check(channel, user['username'])
+            return self._do_points_check(channel, command[1])
+        if len(command) == 3:
+            if command[2] != 'total':
+                return None
+            return self._do_total_points_check(channel, command[1])
+        return None
 
     def _hud_command(self, command, user):
         if len(command) > 1:
