@@ -66,35 +66,15 @@ class GuessingGame():
                 return self._set_first_guess(command)
 
             if command_name == '!guess':
-                if len(command) > 2:
-                    subcommand_name = command[1].lower()
-                    command_value = command[2:]
-                    if subcommand_name == 'medal':
-                        return self._do_medal_guess(user, command_value)
-                command_value = command[1].lower()
-                item = self.parse_item(command_value)
-                return self._do_item_guess(user, item)
+                return self._guess_command(command, user)
 
             if command_name == '!points':
-                if len(command) > 1:
-                    if command[1] == 'total':
-                        if len(command) > 2:
-                            username = command[2]
-                        else:
-                            username = user['username']
-                        return self._do_total_points_check(user['channel-id'], username)
-                    else:
-                        username = command[1]
-                else:
-                    username = user['username']
-                return self._do_points_check(user['channel-id'], username)
+                return self._points_command(command, user)
 
             if (command_name == '!hud'
                     and (permissions['whitelist'] or permissions['mod'])
                     and not permissions['blacklist']):
-                command_value = command[1].lower()
-                item = self.parse_item(command_value)
-                return self._complete_guess(item, user['channel-id'])
+                return self._hud_command(command, user)
         except IndexError:
             self.logger.error('Command missing arguments')
         return None
@@ -180,6 +160,35 @@ class GuessingGame():
             message = 'Cannot convert %s to an integer' % command_value
             self.logger.error(message)
             return message
+
+    def _guess_command(self, command, user):
+        if len(command) > 2:
+            subcommand_name = command[1].lower()
+            command_value = command[2:]
+            if subcommand_name == 'medal':
+                return self._do_medal_guess(user, command_value)
+        command_value = command[1].lower()
+        item = self.parse_item(command_value)
+        return self._do_item_guess(user, item)
+
+    def _points_command(self, command, user):
+        if len(command) > 1:
+            if command[1] == 'total':
+                if len(command) > 2:
+                    username = command[2]
+                else:
+                    username = user['username']
+                return self._do_total_points_check(user['channel-id'], username)
+            else:
+                username = command[1]
+        else:
+            username = user['username']
+        return self._do_points_check(user['channel-id'], username)
+
+    def _hud_command(self, command, user):
+        command_value = command[1].lower()
+        item = self.parse_item(command_value)
+        return self._complete_guess(item, user['channel-id'])
 
     def _do_points_check(self, channel, username):
         try:
