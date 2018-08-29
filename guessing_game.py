@@ -170,7 +170,7 @@ class GuessingGame():
         if not item:
             self.logger.info('Item %s not found', item)
             return
-        self._remove_stale_guesses(self.guesses['item'], user['username'])
+        self.guesses['item'] = self._remove_stale_guesses(self.guesses['item'], user['username'])
         now = datetime.now()
         guess = {
             "timestamp": now,
@@ -187,7 +187,7 @@ class GuessingGame():
             self.logger.info('Medal command incomplete')
             self.logger.debug(medals)
             return
-        self._remove_stale_guesses(self.guesses['medal'], user['username'])
+        self.guesses['medal'] = self._remove_stale_guesses(self.guesses['medal'], user['username'])
         medal_guess = {
             "forest": None,
             "fire": None,
@@ -330,7 +330,7 @@ class GuessingGame():
             if guess['username'] == username:
                 continue
             new_queue.append(guess)
-        guess_queue = new_queue
+        return new_queue
 
     # Integrate with the database in the future
     def _parse_item(self, item):
