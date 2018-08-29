@@ -1,7 +1,7 @@
 """This module provides an interface for running a guessing game."""
 import logging
 from datetime import datetime, timedelta
-from collections import deque
+from collections import deque, OrderedDict
 
 import jstyleson
 
@@ -15,6 +15,8 @@ class GuessingGame():
         logging.basicConfig()
         self.logger = logging.getLogger(__name__)
         self.streamer = streamer
+        with open('items.json') as items:
+            self.items = jstyleson.load(items)
         self.commands = [
             '!guess', '!hud', '!points', '!guesspoints', '!firstguess', '!start', '!mode',
             '!modedel'
@@ -62,9 +64,6 @@ class GuessingGame():
                 }
             ]
         }
-
-        with open('items.json') as items:
-            self.items = jstyleson.load(items)
 
         self.logger.setLevel(logging.DEBUG)
 
@@ -217,14 +216,13 @@ class GuessingGame():
             self.logger.debug(medals)
             return
         self.guesses['medal'] = self._remove_stale_guesses(self.guesses['medal'], user['username'])
-        medal_guess = {
-            "forest": None,
-            "fire": None,
-            "water": None,
-            "shadow": None,
-            "spirit": None,
-            "light": None
-        }
+        medal_guess = OrderedDict()
+        medal_guess["forest"] = None
+        medal_guess["fire"] = None
+        medal_guess["water"] = None
+        medal_guess["shadow"] = None
+        medal_guess["spirit"] = None
+        medal_guess["light"] = None
         i = 0
         for medal in medal_guess:
             guess = medals[i].lower()
@@ -239,6 +237,39 @@ class GuessingGame():
         medal_guess['timestamp'] = datetime.now()
         self.guesses['medal'].append(medal_guess)
         self.logger.debug(medal_guess)
+
+    def _do_song_guess(self, user, songs):
+        if len(songs) < 12:
+            self.logger.info('song command incomplete')
+            self.logger.debug(songs)
+            return
+        self.guesses['song'] = self._remove_stale_guesses(self.guesses['song'], user['username'])
+        song_guess = OrderedDict()
+        song_guess["zl"] = None
+        song_guess["epona"] = None
+        song_guess["saria"] = None
+        song_guess["suns"] = None
+        song_guess["time"] = None
+        song_guess["storms"] = None
+        song_guess["forest"] = None
+        song_guess["fire"] = None
+        song_guess["water"] = None
+        song_guess["shadow"] = None
+        song_guess["spirit"] = None
+        song_guess["light"] = None
+        i = 0
+        for song in song_guess:
+            guess = songs[i].lower()
+            songname = self._parse_songs(guess)
+            if not songname:
+                self.logger.info('Invalid song %s', guess)
+                return
+            song_guess[song] = songname
+            i += 1
+        song_guess['username'] = user['username']
+        song_guess['timestamp'] = datetime.now()
+        self.guesses['song'].append(song_guess)
+        self.logger.debug(song_guess)
 
     def _set_guess_points(self, command):
         try:
@@ -275,13 +306,15 @@ class GuessingGame():
             return message
 
     def _guess_command(self, command, user):
-        if not self.state['running']:
-            return None
         if len(command) > 2:
             subcommand_name = command[1].lower()
             command_value = command[2:]
             if subcommand_name == 'medal':
                 return self._do_medal_guess(user, command_value)
+            if subcommand_name == 'song':
+                return self._do_song_guess(user, command_value)
+        if not self.state['running']:
+            return None
         command_value = command[1].lower()
         item = self._parse_item(command_value)
         return self._do_item_guess(user, item)
@@ -397,6 +430,23 @@ class GuessingGame():
                 continue
             new_queue.append(guess)
         return new_queue
+    
+    def _parse_songs(self, songcode):
+        for item in self.items:
+            if 'name' in item:
+                if not item['name'] in self.guessables['songs']:
+                    continue
+            if 'stages' in item:
+                codes = []
+                for stage in item['stages']:
+                    if 'codes' in stage:
+                        if any(code in stage['codes'].split(',') for code in codes):
+                            continue
+                        for code in stage['codes'].split(','):
+                            codes += [code.strip()]
+                if songcode in codes:
+                    return item['name']
+        return None
 
     # Integrate with the database in the future
     def _parse_item(self, guess):
