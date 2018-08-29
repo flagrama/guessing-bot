@@ -143,8 +143,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         if len(command) > 1:
             sub_command = command[1]
             if (' '.join([command_name, sub_command]) in self.whitelist_commands
-                    and ((permissions['whitelist'] or permissions['mod']) 
-                    and not permissions['blacklist'])):
+                    and user['user-id'] == self.streamer.channel_id):
                 whitelistCommands.do_whitelist_command(self, connection, command)
                 return
         if command_name in self.guessing_game.commands:
