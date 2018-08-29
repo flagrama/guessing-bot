@@ -21,7 +21,7 @@ class GuessingGame():
             }
         }
         self.commands = [
-            '!guess', '!hud', '!points', '!guesspoints', '!firstguess'
+            '!guess', '!hud', '!points', '!guesspoints', '!firstguess', '!start'
         ]
         self.guesses = {
             "item": deque(),
@@ -59,6 +59,10 @@ class GuessingGame():
             user (dict): A dictionary containing the username and user_id of the sender
             permissions (dict): A dictionary containing the user permissions of the sender
             command (string[]): A list containing the command and its arguments
+
+        Returns:
+            Returns a string meant to be sent to Twitch chat. If a falsy value is returned
+            no message is sent to chat.
         """
         try:
             command_name = command[0].lower()
@@ -82,11 +86,19 @@ class GuessingGame():
                     and (permissions['whitelist'] or permissions['mod'])
                     and not permissions['blacklist']):
                 return self._hud_command(command, user)
+
+            if (command_name == '!start'
+                    and (permissions['whitelist'] or permissions['mod'])
+                    and not permissions['blacklist']):
+                return self._start_guessing_game(user)
         except IndexError:
             self.logger.error('Command missing arguments')
         return None
 
     def _complete_guess(self, item, channel):
+        if not self.state['running']:
+            self.logger.info('Guessing game not running')
+            return
         if not item:
             self.logger.info('Item %s not found', item)
             return
@@ -133,73 +145,6 @@ class GuessingGame():
         streamer.reload()
         self.guesses['item'] = deque()
         self.logger.info('Guesses completed')
-
-    def _set_guess_points(self, command):
-        try:
-            command_value = command[1].lower()
-            if int(command_value) > 0:
-                message = 'Set points value to %s' % command_value
-                self.streamer.points = int(command_value)
-                self.streamer.save()
-                self.logger.info(message)
-                return message
-            message = 'Cannot set points value lower than 0'
-            self.logger.info(message)
-            return message
-        except ValueError:
-            message = 'Cannot convert %s to an integer' % command_value
-            self.logger.error(message)
-            return message
-
-    def _set_first_guess(self, command):
-        try:
-            command_value = command[1].lower()
-            if int(command_value) > 0:
-                message = 'Set first guess bonus to %s' % command_value
-                self.streamer.first_bonus = int(command_value)
-                self.streamer.save()
-                self.logger.info(message)
-                return message
-            message = 'Cannot set first guess bonus lower than 0'
-            self.logger.info(message)
-            return message
-        except ValueError:
-            message = 'Cannot convert %s to an integer' % command_value
-            self.logger.error(message)
-            return message
-
-    def _guess_command(self, command, user):
-        if len(command) > 2:
-            subcommand_name = command[1].lower()
-            command_value = command[2:]
-            if subcommand_name == 'medal':
-                return self._do_medal_guess(user, command_value)
-        command_value = command[1].lower()
-        item = self.parse_item(command_value)
-        return self._do_item_guess(user, item)
-
-    def _points_command(self, command, user):
-        channel = user['channel-id']
-        if len(command) == 1:
-            return self._do_points_check(channel, user['username'])
-        if len(command) == 2:
-            if command[1] == 'total':
-                return self._do_total_points_check(channel, user['username'])
-            return self._do_points_check(channel, command[1])
-        if len(command) == 3:
-            if command[2] != 'total':
-                return None
-            return self._do_total_points_check(channel, command[1])
-        return None
-
-    def _hud_command(self, command, user):
-        if len(command) > 1:
-            sub_command = command[1]
-            if sub_command == 'reset':
-                return self._reset_guessing_game()
-        command_value = command[1].lower()
-        item = self.parse_item(command_value)
-        return self._complete_guess(item, user['channel-id'])
 
     def _do_points_check(self, channel, username):
         try:
@@ -268,7 +213,92 @@ class GuessingGame():
         self.guesses['medal'].append(medal_guess)
         self.logger.debug(medal_guess)
 
-    def _reset_guessing_game(self):
+    def _set_guess_points(self, command):
+        try:
+            command_value = command[1].lower()
+            if int(command_value) > 0:
+                message = 'Set points value to %s' % command_value
+                self.streamer.points = int(command_value)
+                self.streamer.save()
+                self.logger.info(message)
+                return message
+            message = 'Cannot set points value lower than 0'
+            self.logger.info(message)
+            return message
+        except ValueError:
+            message = 'Cannot convert %s to an integer' % command_value
+            self.logger.error(message)
+            return message
+
+    def _set_first_guess(self, command):
+        try:
+            command_value = command[1].lower()
+            if int(command_value) > 0:
+                message = 'Set first guess bonus to %s' % command_value
+                self.streamer.first_bonus = int(command_value)
+                self.streamer.save()
+                self.logger.info(message)
+                return message
+            message = 'Cannot set first guess bonus lower than 0'
+            self.logger.info(message)
+            return message
+        except ValueError:
+            message = 'Cannot convert %s to an integer' % command_value
+            self.logger.error(message)
+            return message
+
+    def _guess_command(self, command, user):
+        if not self.state['running']:
+            return None
+        if len(command) > 2:
+            subcommand_name = command[1].lower()
+            command_value = command[2:]
+            if subcommand_name == 'medal':
+                return self._do_medal_guess(user, command_value)
+        command_value = command[1].lower()
+        item = self.parse_item(command_value)
+        return self._do_item_guess(user, item)
+
+    def _points_command(self, command, user):
+        channel = user['channel-id']
+        if len(command) == 1:
+            return self._do_points_check(channel, user['username'])
+        if len(command) == 2:
+            if command[1] == 'total':
+                return self._do_total_points_check(channel, user['username'])
+            return self._do_points_check(channel, command[1])
+        if len(command) == 3:
+            if command[2] != 'total':
+                return None
+            return self._do_total_points_check(channel, command[1])
+        return None
+
+    def _hud_command(self, command, user):
+        if len(command) > 1:
+            sub_command = command[1]
+            if sub_command == 'reset':
+                return self._end_guessing_game(user)
+        if not self.state['running']:
+            self.logger.info('Guessing game not running')
+            return None
+        command_value = command[1].lower()
+        item = self.parse_item(command_value)
+        return self._complete_guess(item, user['channel-id'])
+
+    def _start_guessing_game(self, user):
+        if self.state['running']:
+            self.logger.info('Guessing game already running')
+            return None
+        self.state['running'] = True
+        message = '%s mode guessing game started by %s' % (
+            self.state['mode']['name'].capitalize(), user['username'])
+        self.logger.info(message)
+        return message
+
+    def _end_guessing_game(self, user):
+        if not self.state['running']:
+            self.logger.info('Guessing game not running')
+            return None
         mode = {
             "name": "normal"
         }
@@ -282,6 +312,9 @@ class GuessingGame():
             participant.session_points = 0
         self.streamer.save()
         self.streamer.reload()
+        message = 'Guessing game ended by %s' % user['username']
+        self.logger.info(message)
+        return message
 
     @staticmethod
     def _remove_stale_guesses(guess_queue, username):
