@@ -19,7 +19,7 @@ class GuessingGame():
             self.items = jstyleson.load(items)
         self.commands = [
             '!guess', '!hud', '!points', '!guesspoints', '!firstguess', '!start', '!mode',
-            '!modedel'
+            '!modedel', '!song'
         ]
         self.guesses = {
             "item": deque(),
@@ -118,6 +118,11 @@ class GuessingGame():
                     and (permissions['whitelist'] or permissions['mod'])
                     and not permissions['blacklist']):
                 return self._hud_command(command, user)
+            
+            if (command_name == '!song'
+                    and (permissions['whitelist'] or permissions['mod'])
+                    and not permissions['blacklist']):
+                return self._song_command(command, user['channel-id'])
 
             if (command_name == '!start'
                     and (permissions['whitelist'] or permissions['mod'])
@@ -174,10 +179,10 @@ class GuessingGame():
                 update_participant.total_points += self.streamer.points
             self.logger.info('User %s guessed correctly and earned %s points',
                              guess['username'], self.streamer.points)
-        streamer.save()
-        streamer.reload()
-        self.guesses['item'] = deque()
-        self.logger.info('Guesses completed')
+            streamer.save()
+            streamer.reload()
+            self.guesses['item'] = deque()
+            self.logger.info('Guesses completed')
 
     def _do_points_check(self, channel, username):
         try:
@@ -253,18 +258,18 @@ class GuessingGame():
             return
         self.guesses['song'] = self._remove_stale_guesses(self.guesses['song'], user['username'])
         song_guess = OrderedDict()
-        song_guess["zl"] = None
-        song_guess["epona"] = None
-        song_guess["saria"] = None
-        song_guess["suns"] = None
-        song_guess["time"] = None
-        song_guess["storms"] = None
-        song_guess["forest"] = None
-        song_guess["fire"] = None
-        song_guess["water"] = None
-        song_guess["spirit"] = None
-        song_guess["shadow"] = None
-        song_guess["light"] = None
+        song_guess["Zelda's Lullaby"] = None
+        song_guess["Epona's Song"] = None
+        song_guess["Saria's Song"] = None
+        song_guess["Sun's Song"] = None
+        song_guess["Song of Time"] = None
+        song_guess["Song of Storms"] = None
+        song_guess["Minuet of Forest"] = None
+        song_guess["Bolero of Fire"] = None
+        song_guess["Serenade of Water"] = None
+        song_guess["Requiem of Spirit"] = None
+        song_guess["Nocturne of Shadow"] = None
+        song_guess["Prelude of Light"] = None
         i = 0
         for song in song_guess:
             guess = songs[i]
@@ -396,11 +401,18 @@ class GuessingGame():
                 return self._complete_medal_guess(command[1:], user['channel-id'])
             if subcommand_name == 'reset':
                 return self._end_guessing_game(user)
-            if self._parse_songs(subcommand_name):
-                return self._complete_song_guess(command[1:], user['channel-id'])
         command_value = command[1].lower()
         item = self._parse_item(command_value)
         return self._complete_guess(item, user['channel-id'])
+
+    def _song_command(self, command, channel):
+        if not self.state['running']:
+            self.logger.info('Guessing game not running')
+            return None
+        if 'songsanity' in self.state['mode']:
+            return None
+        if len(command) > 1:
+            return self._complete_song_guess(command[1:], channel)
 
     def _complete_medal_guess(self, command, channel):
         if len(command) < 2:
@@ -468,7 +480,68 @@ class GuessingGame():
                 self.logger.info('Medal guesses completed')
 
     def _complete_song_guess(self, command, channel):
-        pass
+        if len(command) < 2:
+            self.logger.info('Not enough arguments for song')
+            return None
+        new_song = self._parse_songs(command[0])
+        new_location = self._parse_songs(command[1])
+        if not new_song or not new_location:
+            return None
+        if new_song in self.guessables['songs']:
+            if new_song in self.state['songs']:
+                self.logger.info('Song %s already in guesses')
+                if self.state['songs'][new_song] != new_location:
+                    self.state['songs'][new_song] = new_location
+                    self.logger.info('Song %s set to location %s', new_song, new_location)
+            self.state['songs'][new_song] = new_location
+            self.logger.info('Song %s set to location %s', new_song, new_location)
+        if len(self.state['songs']) == 12:
+            local_guesses = deque()
+            hiscore = 0
+            for guess in self.guesses['song']:
+                count = 0
+                for final in self.state['songs']:
+                    if guess[final] == self.state['songs'][final]:
+                        count += 1
+                localguess = {
+                    "user-id": guess['user-id'], "username": guess['username'], "correct": count
+                    }
+                local_guesses.append(localguess)
+                if count > hiscore:
+                    hiscore = count
+            if hiscore < 1:
+                return None
+            for guesser in local_guesses:
+                if guesser['correct'] < hiscore:
+                    continue
+                try:
+                    streamer = Streamer.objects.get( #pylint: disable=no-member
+                        channel_id=channel, participants__user_id=guesser['user-id'])
+                    if streamer.participants:
+                        participant = streamer.participants[0]
+                except Streamer.DoesNotExist: #pylint: disable=no-member
+                    participant = Participant(
+                        username=guesser['username'],
+                        user_id=guesser['user-id'],
+                        session_points=0,
+                        total_points=0)
+                    self.streamer.participants.append(participant)
+                    self.streamer.save()
+                    self.streamer.reload()
+                    streamer = Streamer.objects.get( #pylint: disable=no-member
+                        channel_id=channel, participants__user_id=guesser['user-id'])
+                    participant = streamer.participants[0]
+                    self.logger.error('Participant with ID %s does not exist in the database',
+                                      guesser['user-id'])
+                for update_participant in streamer.participants:
+                    update_participant.session_points += hiscore
+                    update_participant.total_points += hiscore
+                self.logger.info('User %s guessed correctly and earned %s points',
+                                 guesser['username'], hiscore)
+                streamer.save()
+                streamer.reload()
+                self.guesses['song'] = deque()
+                self.logger.info('Song guesses completed')
 
     def _start_guessing_game(self, user):
         if self.state['running']:
