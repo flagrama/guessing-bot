@@ -16,9 +16,7 @@ class GuessingGame():
         self.state = {
             "running": False,
             "freebie": None,
-            "mode": {
-                "name": "normal"
-            }
+            "mode": []
         }
         self.commands = [
             '!guess', '!hud', '!points', '!guesspoints', '!firstguess', '!start'
@@ -255,8 +253,13 @@ class GuessingGame():
             command_value = command[2:]
             if subcommand_name == 'medal':
                 return self._do_medal_guess(user, command_value)
+            if subcommand_name == 'bosskey':
+                # Not using command_value as only using forest/fire/water/etc interferes with
+                # Medallion toggling on the tracker
+                item = self._parse_item(command[1:])
+                return self._do_item_guess(user, item)
         command_value = command[1].lower()
-        item = self.parse_item(command_value)
+        item = self._parse_item(command_value)
         return self._do_item_guess(user, item)
 
     def _points_command(self, command, user):
@@ -274,15 +277,17 @@ class GuessingGame():
         return None
 
     def _hud_command(self, command, user):
-        if len(command) > 1:
-            sub_command = command[1]
-            if sub_command == 'reset':
-                return self._end_guessing_game(user)
         if not self.state['running']:
             self.logger.info('Guessing game not running')
             return None
+        if len(command) > 1:
+            subcommand_name = command[1]
+            if subcommand_name == 'reset':
+                return self._end_guessing_game(user)
+            if subcommand_name == 'bosskey':
+                item = self._parse_item(command[1:])
         command_value = command[1].lower()
-        item = self.parse_item(command_value)
+        item = self._parse_item(command_value)
         return self._complete_guess(item, user['channel-id'])
 
     def _start_guessing_game(self, user):
@@ -290,8 +295,7 @@ class GuessingGame():
             self.logger.info('Guessing game already running')
             return None
         self.state['running'] = True
-        message = '%s mode guessing game started by %s' % (
-            self.state['mode']['name'].capitalize(), user['username'])
+        message = 'Guessing game started by %s' % user['username']
         self.logger.info(message)
         return message
 
@@ -329,17 +333,7 @@ class GuessingGame():
         guess_queue = new_queue
 
     # Integrate with the database in the future
-    @staticmethod
-    def parse_item(item):
-        """
-        Return the internal item name based on user provided string.
-
-        Parameters:
-            item (string): A code word for an item name.
-
-        Returns:
-            string: A string which contains the internal item name
-        """
+    def _parse_item(self, item):
         if item in ['bow']:
             return 'Bow'
         if item in ['slingshot', 'seedbag']:
@@ -390,8 +384,9 @@ class GuessingGame():
             return 'Hover Boots'
         if item in ['hammer', 'megaton', 'megatonhammer']:
             return 'Megaton Hammer'
-        if item in ['ocarina', 'fairyocarina', 'flute', 'oot']:
-            return 'Ocarina'
+        if 'ocarina' in self.state['mode']:
+            if item in ['ocarina', 'fairyocarina', 'flute', 'oot']:
+                return 'Ocarina'
         if item in ['bottle', 'rutonote', 'ruto']:
             return 'Bottle'
         if item in [
@@ -408,8 +403,9 @@ class GuessingGame():
             return 'Magic'
         if item in ['greenrupee']:
             return 'Validation'
-        if item in ['childegg', 'kidtrade', 'kidegg', 'weird', 'weirdegg']:
-            return 'Weird Egg'
+        if 'egg' in self.state['mode']:
+            if item in ['childegg', 'kidtrade', 'kidegg', 'weird', 'weirdegg']:
+                return 'Weird Egg'
         if item in [
                 'adultegg', 'adulttrade', 'pocketegg',
                 'adultcucco', 'pocketcucco',
@@ -424,4 +420,45 @@ class GuessingGame():
                 'claim', 'claimcheck'
             ]:
             return 'Adult Trade Item'
+        if 'songsanity' in self.state['mode']:
+            if item in ['lullaby', 'zelda', 'zeldas']:
+                return "Zelda's Lullaby"
+            if item in ['saria', 'sarias']:
+                return "Saria's Song"
+            if item in ['epona', 'eponas']:
+                return "Epona's Song"
+            if item in ['sunsong', 'sun', 'suns']:
+                return "Sun's Song"
+            if item in ['songoftime', 'time', 'sot']:
+                return "Song of Time"
+            if item in ['songofstorms', 'storm', 'storms', 'sos']:
+                return "Song of Storms"
+            if item in ['minuet', 'greenote']:
+                return "Minuet of Forest"
+            if item in ['bolero', 'rednote']:
+                return "Bolero of Fire"
+            if item in ['serenade', 'bluenote']:
+                return "Serenade of Water"
+            if item in ['requiem', 'orangenote']:
+                return "Requiem of Spirit"
+            if item in ['nocturne', 'purplenote']:
+                return "Nocturne of Shadow"
+            if item in ['prelude', 'yellownote']:
+                return "Prelude of Light"
+        if 'keysanity' in self.state['mode']:
+            if item[0] == 'bosskey' and len(item) > 1:
+                if item[1] in ['forest']:
+                    return 'Forest Temple Boss Key'
+                if item[1] in ['fire']:
+                    return 'Fire Temple Boss Key'
+                if item[1] in ['water']:
+                    return 'Water Temple Boss Key'
+                if item[1] in ['spirit']:
+                    return 'Spirit Temple Boss Key'
+                if item[1] in ['shadow']:
+                    return 'Shadow Temple Boss Key'
+                if item[1] in ['ganon']:
+                    return 'Ganon\'s Castle Boss Key'
+                return None
+            return None
         return None
