@@ -16,7 +16,8 @@ class GuessingGame():
         self.logger = logging.getLogger(__name__)
         self.streamer = streamer
         self.commands = [
-            '!guess', '!hud', '!points', '!guesspoints', '!firstguess', '!start', '!mode'
+            '!guess', '!hud', '!points', '!guesspoints', '!firstguess', '!start', '!mode',
+            '!modedel'
         ]
         self.guesses = {
             "item": deque(),
@@ -102,6 +103,11 @@ class GuessingGame():
                     and (permissions['whitelist'] or permissions['mod'])
                     and not permissions['blacklist']):
                 return self._mode_command(command, user)
+
+            if (command_name == '!modedel'
+                    and (permissions['whitelist'] or permissions['mod'])
+                    and not permissions['blacklist']):
+                return self._modedel_command(command, user)
 
             if (command_name == '!hud'
                     and (permissions['whitelist'] or permissions['mod'])
@@ -313,9 +319,24 @@ class GuessingGame():
             if mode in modes['name'] and mode not in self.state['mode']:
                 message = 'Mode %s added by %s' % (mode, user['username'])
                 self.state['mode'] += [mode]
-                print(self.state['mode'])
                 self.logger.info(message)
                 return message
+        return None
+
+    def _modedel_command(self, command, user):
+        if self.state['running']:
+            self.logger.info('Guessing game already started')
+            return None
+        if len(command) < 2:
+            message = 'Mode Delete command requires a mode argument'
+            self.logger.info(message)
+            return message
+        mode = command[1]
+        if mode in self.state['mode']:
+            message = 'Mode %s removed by %s' % (mode, user['username'])
+            self.state['mode'].remove(mode)
+            self.logger.info(message)
+            return message
         return None
 
     def _hud_command(self, command, user):
