@@ -31,9 +31,11 @@ class GuessingGame():
                 'Keys', 'Treasures', 'Skulls', 'Tokens', 'Prize', 'Label', 'Badge',
                 'Heart Container', 'Pieces'
             ],
-            "dungeons": [
-                'deku', 'dodongo', 'jabu',
+            "medals": [
                 'forest', 'fire', 'water', 'shadow', 'spirit', 'light'
+            ],
+            "dungeons": [
+                'deku', 'dodongo', 'jabu'
             ],
             "songs": [
                 "Zelda's Lullaby", "Saria's Song", "Epona's Song", "Sun's Song",
@@ -41,10 +43,14 @@ class GuessingGame():
                 "Serenade of Water", "Requiem of Spirit", "Nocturne of Shadow", "Prelude of Light"
             ]
         }
+        self.guessables['dungeons'] += [
+            medal for medal in self.guessables['medals'] if medal != 'light']
         self.state = {
             "running": False,
             "freebie": None,
             "mode": [],
+            "songs": {},
+            "medals": {},
             "modes": [
                 {
                     "name": "keysanity",
@@ -81,7 +87,7 @@ class GuessingGame():
             no message is sent to chat.
         """
         try:
-            command_name = command[0].lower()
+            command_name = command[0]
             if (command_name == '!guesspoints'
                     and (permissions['whitelist'] or permissions['mod'])
                     and not permissions['blacklist']):
@@ -160,7 +166,8 @@ class GuessingGame():
                 for update_participant in streamer.participants:
                     update_participant.session_points += self.streamer.first_bonus
                     update_participant.total_points += self.streamer.first_bonus
-                self.logger.info('User %s made the first correct guess', guess['username'])
+                self.logger.info('User %s made the first correct guess earning %s extra points', 
+                                 guess['username'], self.streamer.first_bonus)
                 first_guess = True
             for update_participant in streamer.participants:
                 update_participant.session_points += self.streamer.points
@@ -220,19 +227,20 @@ class GuessingGame():
         medal_guess["forest"] = None
         medal_guess["fire"] = None
         medal_guess["water"] = None
-        medal_guess["shadow"] = None
         medal_guess["spirit"] = None
+        medal_guess["shadow"] = None
         medal_guess["light"] = None
         i = 0
         for medal in medal_guess:
-            guess = medals[i].lower()
-            if guess not in self.guessables['dungeons'] and guess != 'pocket':
+            guess = medals[i]
+            if guess not in self.guessables['dungeons'] and guess != 'free':
                 self.logger.info('Invalid medal %s', guess)
                 return
-            if medal == self.state['freebie'] or guess == 'pocket':
+            if medal == self.state['freebie'] or guess == 'free':
                 continue
             medal_guess[medal] = guess
             i += 1
+        medal_guess['user-id'] = user['user-id']
         medal_guess['username'] = user['username']
         medal_guess['timestamp'] = datetime.now()
         self.guesses['medal'].append(medal_guess)
@@ -254,18 +262,19 @@ class GuessingGame():
         song_guess["forest"] = None
         song_guess["fire"] = None
         song_guess["water"] = None
-        song_guess["shadow"] = None
         song_guess["spirit"] = None
+        song_guess["shadow"] = None
         song_guess["light"] = None
         i = 0
         for song in song_guess:
-            guess = songs[i].lower()
+            guess = songs[i]
             songname = self._parse_songs(guess)
             if not songname:
                 self.logger.info('Invalid song %s', guess)
                 return
             song_guess[song] = songname
             i += 1
+        song_guess['user-id'] = user['user-id']
         song_guess['username'] = user['username']
         song_guess['timestamp'] = datetime.now()
         self.guesses['song'].append(song_guess)
@@ -273,7 +282,7 @@ class GuessingGame():
 
     def _set_guess_points(self, command):
         try:
-            command_value = command[1].lower()
+            command_value = command[1]
             if int(command_value) > 0:
                 message = 'Set points value to %s' % command_value
                 self.streamer.points = int(command_value)
@@ -290,7 +299,7 @@ class GuessingGame():
 
     def _set_first_guess(self, command):
         try:
-            command_value = command[1].lower()
+            command_value = command[1]
             if int(command_value) > 0:
                 message = 'Set first guess bonus to %s' % command_value
                 self.streamer.first_bonus = int(command_value)
@@ -307,7 +316,7 @@ class GuessingGame():
 
     def _guess_command(self, command, user):
         if len(command) > 2:
-            subcommand_name = command[1].lower()
+            subcommand_name = command[1]
             command_value = command[2:]
             if subcommand_name == 'medal':
                 return self._do_medal_guess(user, command_value)
@@ -372,17 +381,94 @@ class GuessingGame():
             return message
         return None
 
+    # TODO: Fix this mess for setting the freebie medal
     def _hud_command(self, command, user):
+        if len(command) > 1:
+            subcommand_name = command[1]
+            if subcommand_name in self.guessables['medals']:
+                return self._complete_medal_guess(command[1:], user['channel-id'])
         if not self.state['running']:
             self.logger.info('Guessing game not running')
             return None
         if len(command) > 1:
             subcommand_name = command[1]
+            if subcommand_name in self.guessables['medals']:
+                return self._complete_medal_guess(command[1:], user['channel-id'])
             if subcommand_name == 'reset':
                 return self._end_guessing_game(user)
+            if self._parse_songs(subcommand_name):
+                return self._complete_song_guess(command[1:], user['channel-id'])
         command_value = command[1].lower()
         item = self._parse_item(command_value)
         return self._complete_guess(item, user['channel-id'])
+
+    def _complete_medal_guess(self, command, channel):
+        if len(command) < 2:
+            return None
+        if command[1] not in self.guessables['dungeons']:
+            if not self.state['running'] and command[1] == 'free':
+                self.state['freebie'] = command[0]
+                self.logger.info('Medal %s set to freebie', command[0])
+            return None
+        if command[0] in self.guessables['medals']:
+            if command[0] in self.state['medals']:
+                self.logger.info('Medal %s already in guesses')
+                if self.state['medals'][command[0]] != command[1]:
+                    self.state['medals'][command[0]] = command[1]
+                    self.logger.info('Medal %s set to dungeon %s', command[0], command[1])
+            self.state['medals'][command[0]] = command[1]
+            self.logger.info('Medal %s set to dungeon %s', command[0], command[1])
+        if ((self.state['freebie'] and len(self.state['medals']) == 5)
+                or len(self.state['medals']) == 6):
+            local_guesses = deque()
+            hiscore = 0
+            for guess in self.guesses['medal']:
+                count = 0
+                for final in self.state['medals']:
+                    if guess[final] == self.state['medals'][final]:
+                        count += 1
+                localguess = {
+                    "user-id": guess['user-id'], "username": guess['username'], "correct": count
+                    }
+                local_guesses.append(localguess)
+                if count > hiscore:
+                    hiscore = count
+            if hiscore < 1:
+                return None
+            for guesser in local_guesses:
+                if guesser['correct'] < hiscore:
+                    continue
+                try:
+                    streamer = Streamer.objects.get( #pylint: disable=no-member
+                        channel_id=channel, participants__user_id=guesser['user-id'])
+                    if streamer.participants:
+                        participant = streamer.participants[0]
+                except Streamer.DoesNotExist: #pylint: disable=no-member
+                    participant = Participant(
+                        username=guesser['username'],
+                        user_id=guesser['user-id'],
+                        session_points=0,
+                        total_points=0)
+                    self.streamer.participants.append(participant)
+                    self.streamer.save()
+                    self.streamer.reload()
+                    streamer = Streamer.objects.get( #pylint: disable=no-member
+                        channel_id=channel, participants__user_id=guesser['user-id'])
+                    participant = streamer.participants[0]
+                    self.logger.error('Participant with ID %s does not exist in the database',
+                                      guesser['user-id'])
+                for update_participant in streamer.participants:
+                    update_participant.session_points += hiscore
+                    update_participant.total_points += hiscore
+                self.logger.info('User %s guessed correctly and earned %s points',
+                                 guesser['username'], hiscore)
+                streamer.save()
+                streamer.reload()
+                self.guesses['medal'] = deque()
+                self.logger.info('Medal guesses completed')
+
+    def _complete_song_guess(self, command, channel):
+        pass
 
     def _start_guessing_game(self, user):
         if self.state['running']:
@@ -403,6 +489,8 @@ class GuessingGame():
         self.state['running'] = False
         self.state['freebie'] = None
         self.state['mode'].clear()
+        self.state['songs'].clear()
+        self.state['medals'].clear()
         for participant in self.streamer.participants:
             participant.session_points = 0
         self.streamer.save()
