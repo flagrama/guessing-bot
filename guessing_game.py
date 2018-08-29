@@ -3,6 +3,8 @@ import logging
 from datetime import datetime, timedelta
 from collections import deque
 
+import jstyleson
+
 from database.streamer import Streamer
 from database.participant import Participant
 
@@ -27,25 +29,23 @@ class GuessingGame():
             "song": deque()
         }
         self.guessables = {
+            "blacklist": [
+                'Keys', 'Treasures', 'Skulls', 'Tokens', 'Prize', 'Label', 'Badge',
+                'Heart Container', 'Pieces'
+            ],
             "dungeons": [
                 'deku', 'dodongo', 'jabu',
                 'forest', 'fire', 'water', 'shadow', 'spirit', 'light'
             ],
             "songs": [
-                'lullaby', 'zelda', 'zeldas',
-                'saria', 'sarias',
-                'epona', 'eponas',
-                'sunsong', 'sun', 'suns',
-                'songoftime', 'time', 'sot',
-                'songofstorms', 'storm', 'storms', 'sos',
-                'minuet', 'greenote',
-                'bolero', 'rednote',
-                'serenade', 'bluenote',
-                'requiem', 'orangenote',
-                'nocturne', 'purplenote',
-                'prelude', 'yellownote'
+                "Zelda's Lullaby", "Saria's Song", "Epona's Song", "Sun's Song",
+                "Song of Time", "Song of Storms", "Minuet of Forest", "Bolero of Fire",
+                "Serenade of Water", "Requiem of Spirit", "Nocturne of Shadow", "Prelude of Light"
             ]
         }
+
+        with open('items.json') as items:
+            self.items = jstyleson.load(items)
 
         self.logger.setLevel(logging.DEBUG)
 
@@ -253,11 +253,6 @@ class GuessingGame():
             command_value = command[2:]
             if subcommand_name == 'medal':
                 return self._do_medal_guess(user, command_value)
-            if subcommand_name == 'bosskey':
-                # Not using command_value as only using forest/fire/water/etc interferes with
-                # Medallion toggling on the tracker
-                item = self._parse_item(command[1:])
-                return self._do_item_guess(user, item)
         command_value = command[1].lower()
         item = self._parse_item(command_value)
         return self._do_item_guess(user, item)
@@ -284,8 +279,6 @@ class GuessingGame():
             subcommand_name = command[1]
             if subcommand_name == 'reset':
                 return self._end_guessing_game(user)
-            if subcommand_name == 'bosskey':
-                item = self._parse_item(command[1:])
         command_value = command[1].lower()
         item = self._parse_item(command_value)
         return self._complete_guess(item, user['channel-id'])
@@ -333,132 +326,26 @@ class GuessingGame():
         return new_queue
 
     # Integrate with the database in the future
-    def _parse_item(self, item):
-        if item in ['bow']:
-            return 'Bow'
-        if item in ['slingshot', 'seedbag']:
-            return 'Slingshot'
-        if item in ['nut', 'nuts', 'dekunuts']:
-            return 'Deku Nuts'
-        if item in ['agony', 'stoneofagony', 'stone', 'pieseed']:
-            return 'Stone of Agony'
-        if item in ['firearrow', 'firearrows', 'farrow', 'farrows']:
-            return 'Fire Arrows'
-        if item in ['icearrow', 'icearrows', 'iarrow', 'iarrows']:
-            return 'Ice Arrows'
-        if item in ['lightarrow', 'lightarrows', 'larrow', 'larrows']:
-            return 'Light Arrows'
-        if item in ['beans', 'magicbeans']:
-            return 'Magic Beans'
-        if item in ['sticks', 'dekusticks', 'stick', 'dekustick']:
-            return 'Deku Sticks'
-        if item in ['bombs', 'bombbag', 'bomb']:
-            return 'Bomb Bag'
-        if item in ['boomerang', 'boomer', 'rang', 'banana']:
-            return 'Boomerang'
-        if item in ['hookshot', 'hs', 'longshot', 'ls']:
-            return 'Hookshot'
-        if item in ['bombchu', 'bombchus', 'chus']:
-            return 'Bombchus'
-        if item in ['lens', 'lensoftruth', 'lot']:
-            return 'Lens of Truth'
-        if item in ['dinsfire', 'dins', 'din']:
-            return 'Din\'s Fire'
-        if item in ['faroreswind', 'farores', 'farore', 'fw']:
-            return 'Farore\'s Wind'
-        if item in ['nayruslove', 'nayrus', 'nayru', 'condom']:
-            return 'Nayru\'s Love'
-        if item in ['sword1', 'kokirisword']:
-            return 'Kokiri Sword'
-        if item in ['sword3', 'biggoronsword', 'biggoron', 'bgs']:
-            return 'Biggoron Sword'
-        if item in ['shield3', 'mirrorshield', 'mirror', 'mshield']:
-            return 'Mirror Shield'
-        if item in ['gorontunic', 'redtunic']:
-            return 'Goron Tunic'
-        if item in ['zoratunic', 'bluetunic']:
-            return 'Zora Tunic'
-        if item in ['ironboots', 'iboots', 'iron', 'irons']:
-            return 'Iron Boots'
-        if item in ['hoverboots', 'hboots', 'hover', 'hovers']:
-            return 'Hover Boots'
-        if item in ['hammer', 'megaton', 'megatonhammer']:
-            return 'Megaton Hammer'
-        if 'ocarina' in self.state['mode']:
-            if item in ['ocarina', 'fairyocarina', 'flute', 'oot']:
-                return 'Ocarina'
-        if item in ['bottle', 'rutonote', 'ruto']:
-            return 'Bottle'
-        if item in [
-                'bracelet', 'lift',
-                'silvergauntlets', 'lift2', 'silvers', 'silver', 'silvergaunt',
-                'goldgauntlets', 'lift3', 'golds', 'golden', 'goldgaunt'
-            ]:
-            return 'Strength Upgrade'
-        if item in ['silverscale', 'scale', 'goldscale', 'scale2']:
-            return 'Diving Scale'
-        if item in ['wallet']:
-            return 'Wallet'
-        if item in ['magic', 'doublemagic', 'magic2']:
-            return 'Magic'
-        if item in ['greenrupee']:
-            return 'Validation'
-        if 'egg' in self.state['mode']:
-            if item in ['childegg', 'kidtrade', 'kidegg', 'weird', 'weirdegg']:
-                return 'Weird Egg'
-        if item in [
-                'adultegg', 'adulttrade', 'pocketegg',
-                'adultcucco', 'pocketcucco',
-                'cojiro', 'bluecucco',
-                'mushroom', 'oddmushroom',
-                'oddpotion', 'oddpoultice', 'potion',
-                'saw', 'poachersaw',
-                'brokensword',
-                'perscription', 'script',
-                'frog', 'eyeballfrog', 'eyeball',
-                'eyedrops', 'drops',
-                'claim', 'claimcheck'
-            ]:
-            return 'Adult Trade Item'
-        if 'songsanity' in self.state['mode']:
-            if item in ['lullaby', 'zelda', 'zeldas']:
-                return "Zelda's Lullaby"
-            if item in ['saria', 'sarias']:
-                return "Saria's Song"
-            if item in ['epona', 'eponas']:
-                return "Epona's Song"
-            if item in ['sunsong', 'sun', 'suns']:
-                return "Sun's Song"
-            if item in ['songoftime', 'time', 'sot']:
-                return "Song of Time"
-            if item in ['songofstorms', 'storm', 'storms', 'sos']:
-                return "Song of Storms"
-            if item in ['minuet', 'greenote']:
-                return "Minuet of Forest"
-            if item in ['bolero', 'rednote']:
-                return "Bolero of Fire"
-            if item in ['serenade', 'bluenote']:
-                return "Serenade of Water"
-            if item in ['requiem', 'orangenote']:
-                return "Requiem of Spirit"
-            if item in ['nocturne', 'purplenote']:
-                return "Nocturne of Shadow"
-            if item in ['prelude', 'yellownote']:
-                return "Prelude of Light"
-        if 'keysanity' in self.state['mode']:
-            if item[0] == 'bosskey' and len(item) > 1:
-                if item[1] in ['forest']:
-                    return 'Forest Temple Boss Key'
-                if item[1] in ['fire']:
-                    return 'Fire Temple Boss Key'
-                if item[1] in ['water']:
-                    return 'Water Temple Boss Key'
-                if item[1] in ['spirit']:
-                    return 'Spirit Temple Boss Key'
-                if item[1] in ['shadow']:
-                    return 'Shadow Temple Boss Key'
-                if item[1] in ['ganon']:
-                    return 'Ganon\'s Castle Boss Key'
-                return None
-            return None
+    def _parse_item(self, guess):
+        for item in self.items:
+            if 'name' in item:
+                if (any(skip in item['name'] for skip in self.guessables['blacklist'])
+                        or ('songsanity' not in self.state['mode']
+                            and item['name'] in self.guessables['songs'])
+                        or ('keysanity' not in self.state['mode'] and 'Boss Key' in item['name'])):
+                    continue
+            if 'codes' in item:
+                for code in item['codes'].split(','):
+                    if guess in [code.strip()]:
+                        return item['name']
+            elif 'stages' in item:
+                codes = []
+                for stage in item['stages']:
+                    if 'codes' in stage:
+                        if any(code in stage['codes'].split(',') for code in codes):
+                            continue
+                        for code in stage['codes'].split(','):
+                            codes += [code.strip()]
+                if guess in codes:
+                    return item['name']
         return None
