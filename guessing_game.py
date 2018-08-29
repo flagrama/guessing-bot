@@ -15,13 +15,8 @@ class GuessingGame():
         logging.basicConfig()
         self.logger = logging.getLogger(__name__)
         self.streamer = streamer
-        self.state = {
-            "running": False,
-            "freebie": None,
-            "mode": []
-        }
         self.commands = [
-            '!guess', '!hud', '!points', '!guesspoints', '!firstguess', '!start'
+            '!guess', '!hud', '!points', '!guesspoints', '!firstguess', '!start', '!mode'
         ]
         self.guesses = {
             "item": deque(),
@@ -41,6 +36,29 @@ class GuessingGame():
                 "Zelda's Lullaby", "Saria's Song", "Epona's Song", "Sun's Song",
                 "Song of Time", "Song of Storms", "Minuet of Forest", "Bolero of Fire",
                 "Serenade of Water", "Requiem of Spirit", "Nocturne of Shadow", "Prelude of Light"
+            ]
+        }
+        self.state = {
+            "running": False,
+            "freebie": None,
+            "mode": [],
+            "modes": [
+                {
+                    "name": "keysanity",
+                    "items": ["Boss Key"]
+                },
+                {
+                    "name": "songsanity",
+                    "items": self.guessables['songs']
+                },
+                {
+                    "name": "egg",
+                    "items": ["Child Trade"]
+                },
+                {
+                    "name": "ocarina",
+                    "items": ["Ocarina"]
+                }
             ]
         }
 
@@ -79,6 +97,11 @@ class GuessingGame():
 
             if command_name == '!points':
                 return self._points_command(command, user)
+
+            if (command_name == '!mode'
+                    and (permissions['whitelist'] or permissions['mod'])
+                    and not permissions['blacklist']):
+                return self._mode_command(command, user)
 
             if (command_name == '!hud'
                     and (permissions['whitelist'] or permissions['mod'])
@@ -271,6 +294,30 @@ class GuessingGame():
             return self._do_total_points_check(channel, command[1])
         return None
 
+    def _mode_command(self, command, user):
+        if self.state['running']:
+            self.logger.info('Guessing game already started')
+            return None
+        if len(command) < 2:
+            message = 'Mode command requires a mode argument'
+            self.logger.info(message)
+            return message
+        mode = command[1]
+        if mode == 'normal':
+            message = 'Mode reset to normal by %s' % user['username']
+            print(message)
+            self.state['mode'].clear()
+            self.logger.info(message)
+            return message
+        for modes in self.state['modes']:
+            if mode in modes['name'] and mode not in self.state['mode']:
+                message = 'Mode %s added by %s' % (mode, user['username'])
+                self.state['mode'] += [mode]
+                print(self.state['mode'])
+                self.logger.info(message)
+                return message
+        return None
+
     def _hud_command(self, command, user):
         if not self.state['running']:
             self.logger.info('Guessing game not running')
@@ -296,15 +343,12 @@ class GuessingGame():
         if not self.state['running']:
             self.logger.info('Guessing game not running')
             return None
-        mode = {
-            "name": "normal"
-        }
         self.guesses['item'] = deque()
         self.guesses['medal'] = deque()
         self.guesses['song'] = deque()
         self.state['running'] = False
         self.state['freebie'] = None
-        self.state['mode'] = mode
+        self.state['mode'].clear()
         for participant in self.streamer.participants:
             participant.session_points = 0
         self.streamer.save()
@@ -312,6 +356,14 @@ class GuessingGame():
         message = 'Guessing game ended by %s' % user['username']
         self.logger.info(message)
         return message
+
+    def _check_items_allowed(self, item):
+        if any(skip in item for skip in self.guessables['blacklist']):
+            return False
+        for modes in self.state['modes']:
+            if modes['name'] not in self.state['mode'] and item in modes['items']:
+                return False
+        return True
 
     @staticmethod
     def _remove_stale_guesses(guess_queue, username):
@@ -329,10 +381,7 @@ class GuessingGame():
     def _parse_item(self, guess):
         for item in self.items:
             if 'name' in item:
-                if (any(skip in item['name'] for skip in self.guessables['blacklist'])
-                        or ('songsanity' not in self.state['mode']
-                            and item['name'] in self.guessables['songs'])
-                        or ('keysanity' not in self.state['mode'] and 'Boss Key' in item['name'])):
+                if not self._check_items_allowed(item['name']):
                     continue
             if 'codes' in item:
                 for code in item['codes'].split(','):
