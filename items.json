@@ -285,7 +285,7 @@
   },
   // Song of Time
   {
-    "name": "Sun's Song",
+    "name": "Song of Time",
     "type": "progressive_toggle",
     "stages": [
       {
