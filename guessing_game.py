@@ -19,7 +19,7 @@ class GuessingGame():
             self.items = jstyleson.load(items)
         self.commands = [
             '!guess', '!hud', '!points', '!guesspoints', '!firstguess', '!start', '!mode',
-            '!modedel', '!song'
+            '!modedel', '!song', '!finish'
         ]
         self.guesses = {
             "item": deque(),
@@ -118,7 +118,7 @@ class GuessingGame():
                     and (permissions['whitelist'] or permissions['mod'])
                     and not permissions['blacklist']):
                 return self._hud_command(command, user)
-            
+
             if (command_name == '!song'
                     and (permissions['whitelist'] or permissions['mod'])
                     and not permissions['blacklist']):
@@ -128,6 +128,11 @@ class GuessingGame():
                     and (permissions['whitelist'] or permissions['mod'])
                     and not permissions['blacklist']):
                 return self._start_guessing_game(user)
+
+            if (command_name == '!finish'
+                    and (permissions['whitelist'] or permissions['mod'])
+                    and not permissions['blacklist']):
+                return self._end_guessing_game(user)
         except IndexError:
             self.logger.error('Command missing arguments')
         return None
@@ -171,7 +176,7 @@ class GuessingGame():
                 for update_participant in streamer.participants:
                     update_participant.session_points += self.streamer.first_bonus
                     update_participant.total_points += self.streamer.first_bonus
-                self.logger.info('User %s made the first correct guess earning %s extra points', 
+                self.logger.info('User %s made the first correct guess earning %s extra points',
                                  guess['username'], self.streamer.first_bonus)
                 first_guess = True
             for update_participant in streamer.participants:
@@ -399,8 +404,6 @@ class GuessingGame():
             subcommand_name = command[1]
             if subcommand_name in self.guessables['medals']:
                 return self._complete_medal_guess(command[1:], user['channel-id'])
-            if subcommand_name == 'reset':
-                return self._end_guessing_game(user)
         command_value = command[1].lower()
         item = self._parse_item(command_value)
         return self._complete_guess(item, user['channel-id'])
@@ -591,7 +594,7 @@ class GuessingGame():
                 continue
             new_queue.append(guess)
         return new_queue
-    
+
     def _parse_songs(self, songcode):
         for item in self.items:
             if 'name' in item:
