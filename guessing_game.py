@@ -78,11 +78,12 @@ class GuessingGame():
             ]
         }
 
-        self.database['latest-session'] = self._get_latest_session()
+        self.database['latest-session'] = self._get_sessions()
 
         self.logger.setLevel(logging.DEBUG)
 
-    def _get_latest_session(self):
+    def _get_sessions(self):
+        self.database['current-session'] = Session()
         if self.database['streamer'].sessions:
             return self.database['streamer'].sessions[len(self.database['streamer'].sessions) - 1]
         return None
@@ -270,7 +271,7 @@ class GuessingGame():
             timestamp=datetime.now(),
             participant=participant.user_id,
             guess_type="Medal",
-            guess=medal_guess,
+            guess=jstyleson.dumps(medal_guess),
             session_points=participant.session_points,
             total_points=participant.total_points
         )
@@ -313,7 +314,7 @@ class GuessingGame():
             timestamp=datetime.now(),
             participant=participant.user_id,
             guess_type="Song",
-            guess=song_guess,
+            guess=jstyleson.dumps(song_guess),
             session_points=participant.session_points,
             total_points=participant.total_points
         )
@@ -380,9 +381,9 @@ class GuessingGame():
             subcommand_name = command[1]
             command_value = command[2:]
             if subcommand_name == 'medal':
-                return self._do_medal_guess(user, command_value, streamer.participant[0])
+                return self._do_medal_guess(user, command_value, streamer.participants[0])
             if subcommand_name == 'song':
-                return self._do_song_guess(user, command_value, streamer.participant[0])
+                return self._do_song_guess(user, command_value, streamer.participants[0])
         if not self.state['running']:
             return None
         command_value = command[1].lower()
@@ -593,8 +594,6 @@ class GuessingGame():
             self.logger.info('Guessing game already running')
             return None
         self.state['running'] = True
-        session = Session()
-        self.database['current-session'] = session
         message = 'Guessing game started by %s' % user['username']
         self.logger.info(message)
         return message
@@ -615,7 +614,7 @@ class GuessingGame():
             participant.session_points = 0
         self.database['streamer'].sessions.append(self.database['current-session'])
         self.database['latest-session'] = self.database['current-session']
-        self.database['current-session'] = None
+        self.database['current-session'] = Session()
         self.database['streamer'].save()
         self.database['streamer'].reload()
         message = 'Guessing game ended by %s' % user['username']
