@@ -2,6 +2,7 @@
 import logging
 import os.path
 import errno
+import boto3
 from datetime import datetime, timedelta
 from collections import deque, OrderedDict
 import csv
@@ -456,20 +457,21 @@ class GuessingGame():
         return None
 
     def _report_totals(self):
-        if not os.path.exists(
-                os.path.join(os.path.curdir, 'reports', str(datetime.now()) + ' totals' + '.csv')):
+        amazon_s3 = boto3.resource('s3')
+        file = os.path.join(os.path.curdir, 'reports', str(datetime.now()) + ' totals' + '.csv')
+        if not os.path.exists(file):
             try:
-                os.makedirs(os.path.dirname(os.path.join(
-                    os.path.curdir, 'reports', str(datetime.now()) + ' totals' + '.csv')))
+                os.makedirs(os.path.dirname(file))
             except OSError as exc:
                 if exc.errno != errno.EEXIST:
                     raise
         report_writer = csv.writer(
-            open(os.path.join(
-                os.path.curdir, 'reports', str(datetime.now()) + ' totals' + '.csv'), 'w'))
+            open(file, 'w'))
         for participant in self.database['streamer'].participants:
             report_writer.writerow([participant.user_id, participant.username,
                                     participant.total_points])
+        bucket = amazon_s3.Bucket(os.environ('S3_BUCKET'))
+        bucket.upload_file(file, str(datetime.now()) + '.csv', ExtraArgs={'ACL':'public-read'})
 
     # TODO: Fix this mess for setting the freebie medal
     def _hud_command(self, command):
@@ -632,20 +634,22 @@ class GuessingGame():
         self.database['current-session'] = Session()
         self.database['streamer'].save()
         self.database['streamer'].reload()
-        if not os.path.exists(
-                os.path.join(os.path.curdir, 'reports', str(datetime.now()) + '.csv')):
+        file = os.path.join(os.path.curdir, 'reports', str(datetime.now()) + '.csv')
+        amazon_s3 = boto3.resource('s3')
+        if not os.path.exists(file):
             try:
-                os.makedirs(os.path.dirname(
-                    os.path.join(os.path.curdir, 'reports', str(datetime.now()) + '.csv')))
+                os.makedirs(os.path.dirname(file))
             except OSError as exc:
                 if exc.errno != errno.EEXIST:
                     raise
         report_writer = csv.writer(
-            open(os.path.join(os.path.curdir, 'reports', str(datetime.now()) + '.csv'), 'w'))
+            open(file, 'w'))
         for guess in self.database['latest-session'].guesses:
             report_writer.writerow([guess.timestamp, guess.participant, guess.participant_name,
                                     guess.guess_type, guess.guess, guess.session_points,
                                     guess.total_points])
+        bucket = amazon_s3.Bucket(os.environ['S3_BUCKET'])
+        bucket.upload_file(file, str(datetime.now()) + '.csv', ExtraArgs={'ACL':'public-read'})
         message = 'Guessing game ended by %s' % user['username']
         self.logger.info(message)
         return message
