@@ -23,8 +23,3 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print('\n')
         logger.info('SIGINT recieved. Terminating.')
-    except Exception as e:
-        if not args.debug:
-            logger.error(e)
-        else:
-            raise e
