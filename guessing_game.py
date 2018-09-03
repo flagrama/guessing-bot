@@ -7,6 +7,7 @@ import jstyleson
 
 from database.streamer import Streamer
 from database.participant import Participant
+from database.session import Session
 
 class GuessingGame():
     """This is a class for running a guessing game."""
@@ -16,13 +17,15 @@ class GuessingGame():
         self.logger = logging.getLogger(__name__)
         self.database = {
             "streamer": streamer,
-            "channel-id": streamer.channel_id
+            "channel-id": streamer.channel_id,
+            "current-session": None,
+            "latest-session": None
         }
         with open('items.json') as items:
             self.items = jstyleson.load(items)
         self.commands = [
             '!guess', '!hud', '!points', '!guesspoints', '!firstguess', '!start', '!mode',
-            '!modedel', '!song', '!finish'
+            '!modedel', '!song', '!finish', '!report'
         ]
         self.guesses = {
             "item": deque(),
@@ -74,7 +77,14 @@ class GuessingGame():
             ]
         }
 
+        self.database['latest-session'] = self._get_latest_session()
+
         self.logger.setLevel(logging.DEBUG)
+
+    def _get_latest_session(self):
+        if self.database['streamer'].sessions:
+            return self.database['streamer'].sessions[len(self.database['streamer'].sessions) - 1]
+        return None
 
     def do_command(self, user, permissions, command):
         """
@@ -126,6 +136,11 @@ class GuessingGame():
                     and (permissions['whitelist'] or permissions['mod'])
                     and not permissions['blacklist']):
                 return self._song_command(command)
+
+            if (command_name == '!report'
+                    and (permissions['whitelist'] or permissions['mod'])
+                    and not permissions['blacklist']):
+                return self._report_command(command)
 
             if (command_name == '!start'
                     and (permissions['whitelist'] or permissions['mod'])
@@ -393,6 +408,20 @@ class GuessingGame():
             return message
         return None
 
+    def _report_command(self, command):
+        if len(command) > 1:
+            if command[1] == 'totals':
+                self._report_totals()
+                return None
+        self._report_session()
+        return None
+
+    def _report_session(self):
+        pass
+
+    def _report_totals(self):
+        pass
+
     # TODO: Fix this mess for setting the freebie medal
     def _hud_command(self, command):
         if len(command) > 1:
@@ -557,6 +586,8 @@ class GuessingGame():
             self.logger.info('Guessing game already running')
             return None
         self.state['running'] = True
+        session = Session()
+        self.database['current-session'] = session
         message = 'Guessing game started by %s' % user['username']
         self.logger.info(message)
         return message
@@ -575,6 +606,9 @@ class GuessingGame():
         self.state['medals'].clear()
         for participant in self.database['streamer'].participants:
             participant.session_points = 0
+        self.database['latest-session'] = self.database['current-session']
+        self.database['streamer'].sessions.append(self.database['current-session'])
+        self.database['current-session'] = None
         self.database['streamer'].save()
         self.database['streamer'].reload()
         message = 'Guessing game ended by %s' % user['username']
