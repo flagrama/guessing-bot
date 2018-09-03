@@ -45,7 +45,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         self.whitelist_commands = [
             '!hud add', '!hud remove', '!hud ban', '!hud unban'
             ]
-        self.commands = self.default_commands
+        self.commands = self.default_commands[:]
         self.logger.debug(self.commands)
 
     def get_user_id(self, username):
@@ -141,7 +141,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         user, permissions = self.get_user_permissions(event)
 
         if len(command) > 1:
-            sub_command = command[1]
+            sub_command = command[1].lower()
             if (' '.join([command_name, sub_command]) in self.whitelist_commands
                     and user['user-id'] == self.streamer.channel_id):
                 whitelistCommands.do_whitelist_command(self, connection, command)
@@ -157,7 +157,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         self.logger.debug('Built-in command not found')
         try:
             streamer = Streamer.objects.get( #pylint: disable=no-member
-                channel_id = self.streamer.channel_id, commands__name = command_name)
+                channel_id = self.streamer.channel_id, commands__name = command_name.lower())
             for custom_command in streamer.commands:
                 self.logger.info('Custom command %s received', custom_command.name)
                 connection.privmsg(self.channel, custom_command.output)
@@ -183,6 +183,5 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
                     self.logger.info('Ignoring message from self')
                     return
         command = event.arguments[0].split(' ')
-        command = [comm.lower() for comm in command]
-        if command[0] in self.commands:
+        if command[0].lower() in self.commands:
             self.do_command(event, command)

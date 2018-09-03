@@ -3,7 +3,7 @@ import customCommands
 def do_default_command(twitch_bot, connection, command):
     try:
         command_name = command[0]
-        custom_command_name = command[1]
+        custom_command_name = command[1].lower()
     except IndexError:
         message = 'Custom command name not provided'
         twitch_bot.logger.error(message)
