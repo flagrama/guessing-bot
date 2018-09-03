@@ -12,6 +12,7 @@ import mongoengine
 
 from database import Streamer, Participant, WhitelistUser, BlacklistUser, Session, SessionLogEntry
 import twitch
+import settings
 
 class GuessingGame():
     """This is a class for running a guessing game."""
@@ -19,6 +20,10 @@ class GuessingGame():
         """The constructor for GuessingGame class."""
         logging.basicConfig()
         self.logger = logging.getLogger(__name__)
+        if settings.DEBUG:
+            self.logger.setLevel(logging.DEBUG)
+        else:
+            self.logger.setLevel(logging.INFO)
         self.database = {
             "streamer": streamer,
             "channel-id": streamer.channel_id,
@@ -29,7 +34,7 @@ class GuessingGame():
             self.items = jstyleson.load(items)
         self.commands = {
             "whitelist": ['add', 'remove', 'ban', 'unban'],
-            "normal": ['!guess', '!hud', '!points', '!guesspoints', '!firstguess', '!start',
+            "default": ['!guess', '!hud', '!points', '!guesspoints', '!firstguess', '!start',
                        '!mode', '!modedel', '!song', '!finish', '!report']
         }
         self.guesses = {
@@ -724,8 +729,8 @@ class GuessingGame():
 
         new_user = WhitelistUser(username=username, user_id=new_user_id)
         try:
-            streamer = Streamer.objects.get(channel_id=self.database['channel_id'], #pylint: disable=no-member
-                                            whitelist__user_id = new_user_id)
+            streamer = Streamer.objects.get(channel_id=self.database['channel-id'], #pylint: disable=no-member
+                                            whitelist__user_id=new_user_id)
             if streamer.whitelist:
                 self.logger.info('User with ID %s already exists in the database', new_user_id)
                 return False
@@ -754,11 +759,11 @@ class GuessingGame():
             return False
 
         try:
-            streamer = Streamer.objects.get(channel_id = self.database['channel_id'], #pylint: disable=no-member
+            streamer = Streamer.objects.get(channel_id = self.database['channel-id'], #pylint: disable=no-member
                                             whitelist__user_id=existing_user_id)
             if not streamer.whitelist:
                 return False
-            Streamer.objects.update(channel_id=self.database['channel_id'], #pylint: disable=no-member
+            Streamer.objects.update(channel_id=self.database['channel-id'], #pylint: disable=no-member
                                     pull__whitelist__user_id = existing_user_id)
             self.database['streamer'].save()
             self.database['streamer'].reload()
@@ -811,7 +816,7 @@ class GuessingGame():
             return False
 
         try:
-            streamer = Streamer.objects.get(channel_id=self.database['channel_id'], #pylint: disable=no-member
+            streamer = Streamer.objects.get(channel_id=self.database['channel-id'], #pylint: disable=no-member
                                             blacklist__user_id = existing_user_id)
             if not streamer.whitelist:
                 return False

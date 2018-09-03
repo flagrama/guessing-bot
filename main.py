@@ -1,10 +1,12 @@
 import argparse
 import logging
 
+import settings
 import bot
 
 def main(debug):
-    client = bot.TwitchBot(debug)
+    settings.DEBUG = debug
+    client = bot.TwitchBot()
     client.start()
 
 if __name__ == "__main__":

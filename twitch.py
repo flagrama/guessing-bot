@@ -2,7 +2,14 @@ import os
 import logging
 import requests
 
+import settings
+
+logging.basicConfig()
 LOGGER = logging.getLogger(__name__)
+if settings.DEBUG:
+    LOGGER.setLevel(logging.DEBUG)
+else:
+    LOGGER.setLevel(logging.INFO)
 CLIENT_ID = os.environ['TWITCH_ID']
 TOKEN = os.environ['TWITCH_TOKEN']
 
