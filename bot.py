@@ -137,7 +137,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
 
     def do_command(self, event, command):
         connection = self.connection
-        command_name = command[0]
+        command_name = command[0].lower()
         user, permissions = self.get_user_permissions(event)
 
         if len(command) > 1:
@@ -157,10 +157,11 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         self.logger.debug('Built-in command not found')
         try:
             streamer = Streamer.objects.get( #pylint: disable=no-member
-                channel_id = self.streamer.channel_id, commands__name = command_name.lower())
+                channel_id = self.streamer.channel_id, commands__name = command_name)
             for custom_command in streamer.commands:
-                self.logger.info('Custom command %s received', custom_command.name)
-                connection.privmsg(self.channel, custom_command.output)
+                if command_name in custom_command['name']:
+                    self.logger.info('Custom command %s received', custom_command.name)
+                    connection.privmsg(self.channel, custom_command.output)
         except Streamer.DoesNotExist: #pylint: disable=no-member
             self.logger.error(
                 'Custom command %s not found in database but is in command list', command_name)
