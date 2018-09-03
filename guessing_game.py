@@ -1,7 +1,10 @@
 """This module provides an interface for running a guessing game."""
 import logging
+import os.path
+import errno
 from datetime import datetime, timedelta
 from collections import deque, OrderedDict
+import csv
 
 import jstyleson
 
@@ -234,6 +237,7 @@ class GuessingGame():
         guess = SessionLogEntry(
             timestamp=datetime.now(),
             participant=participant.user_id,
+            participant_name=participant.username,
             guess_type="Item",
             guess=item,
             session_points=participant.session_points,
@@ -270,8 +274,9 @@ class GuessingGame():
         guess = SessionLogEntry(
             timestamp=datetime.now(),
             participant=participant.user_id,
+            participant_name=participant.username,
             guess_type="Medal",
-            guess=jstyleson.dumps(medal_guess),
+            guess=jstyleson.dumps(medal_guess).replace(',', '\n'),
             session_points=participant.session_points,
             total_points=participant.total_points
         )
@@ -313,8 +318,9 @@ class GuessingGame():
         guess = SessionLogEntry(
             timestamp=datetime.now(),
             participant=participant.user_id,
+            participant_name=participant.username,
             guess_type="Song",
-            guess=jstyleson.dumps(song_guess),
+            guess=jstyleson.dumps(song_guess).replace(',', '\n'),
             session_points=participant.session_points,
             total_points=participant.total_points
         )
@@ -447,14 +453,23 @@ class GuessingGame():
             if command[1] == 'totals':
                 self._report_totals()
                 return None
-        self._report_session()
         return None
 
-    def _report_session(self):
-        pass
-
     def _report_totals(self):
-        pass
+        if not os.path.exists(
+                os.path.join(os.path.curdir, 'reports', str(datetime.now()) + ' totals' + '.csv')):
+            try:
+                os.makedirs(os.path.dirname(os.path.join(
+                    os.path.curdir, 'reports', str(datetime.now()) + ' totals' + '.csv')))
+            except OSError as exc:
+                if exc.errno != errno.EEXIST:
+                    raise
+        report_writer = csv.writer(
+            open(os.path.join(
+                os.path.curdir, 'reports', str(datetime.now()) + ' totals' + '.csv'), 'w'))
+        for participant in self.database['streamer'].participants:
+            report_writer.writerow([participant.user_id, participant.username,
+                                    participant.total_points])
 
     # TODO: Fix this mess for setting the freebie medal
     def _hud_command(self, command):
@@ -617,6 +632,20 @@ class GuessingGame():
         self.database['current-session'] = Session()
         self.database['streamer'].save()
         self.database['streamer'].reload()
+        if not os.path.exists(
+                os.path.join(os.path.curdir, 'reports', str(datetime.now()) + '.csv')):
+            try:
+                os.makedirs(os.path.dirname(
+                    os.path.join(os.path.curdir, 'reports', str(datetime.now()) + '.csv')))
+            except OSError as exc:
+                if exc.errno != errno.EEXIST:
+                    raise
+        report_writer = csv.writer(
+            open(os.path.join(os.path.curdir, 'reports', str(datetime.now()) + '.csv'), 'w'))
+        for guess in self.database['latest-session'].guesses:
+            report_writer.writerow([guess.timestamp, guess.participant, guess.participant_name,
+                                    guess.guess_type, guess.guess, guess.session_points,
+                                    guess.total_points])
         message = 'Guessing game ended by %s' % user['username']
         self.logger.info(message)
         return message
