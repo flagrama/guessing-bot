@@ -458,7 +458,8 @@ class GuessingGame():
 
     def _report_totals(self):
         amazon_s3 = boto3.resource('s3')
-        file = os.path.join(os.path.curdir, 'reports', str(datetime.now()) + ' totals' + '.csv')
+        filename = str(datetime.now()).replace(':', '_')
+        file = os.path.join(os.path.curdir, 'reports', filename + ' totals' + '.csv')
         if not os.path.exists(file):
             try:
                 os.makedirs(os.path.dirname(file))
