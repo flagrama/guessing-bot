@@ -634,7 +634,8 @@ class GuessingGame():
         self.database['current-session'] = Session()
         self.database['streamer'].save()
         self.database['streamer'].reload()
-        file = os.path.join(os.path.curdir, 'reports', str(datetime.now()) + '.csv')
+        filename = str(datetime.now()).replace(':', '_')
+        file = os.path.join(os.path.curdir, 'reports', filename + '.csv')
         amazon_s3 = boto3.resource('s3')
         if not os.path.exists(file):
             try:
@@ -642,8 +643,7 @@ class GuessingGame():
             except OSError as exc:
                 if exc.errno != errno.EEXIST:
                     raise
-        report_writer = csv.writer(
-            open(file, 'w'))
+        report_writer = csv.writer(open(file, 'w'))
         for guess in self.database['latest-session'].guesses:
             report_writer.writerow([guess.timestamp, guess.participant, guess.participant_name,
                                     guess.guess_type, guess.guess, guess.session_points,
