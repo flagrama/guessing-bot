@@ -127,13 +127,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         connection = self.connection
         command_name = command[0].lower()
         user, permissions = self.get_user_permissions(event)
-
-        if len(command) > 1:
-            sub_command = command[1].lower()
-            if (' '.join([command_name, sub_command]) in self.commands['guessing-game']:
-                    and user['user-id'] == self.streamer.channel_id):
-                whitelistCommands.do_whitelist_command(self, connection, command)
-                return
+        if command_name in self.commands['guessing-game']:
             message = self.guessing_game.do_command(user, permissions, command)
             if message:
                 self.connection.privmsg(self.config['channel'], message)
