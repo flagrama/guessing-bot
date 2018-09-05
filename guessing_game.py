@@ -2,12 +2,13 @@
 import logging
 import os.path
 import errno
-import boto3
 from datetime import datetime, timedelta
 from collections import deque, OrderedDict
 import csv
 
+import boto3
 import jstyleson
+import mongoengine
 
 from database.streamer import Streamer
 from database.participant import Participant
@@ -170,33 +171,31 @@ class GuessingGame():
             return
         expiration = datetime.now() - timedelta(minutes=15)
         first_guess = False
-        streamer = None
         for guess in self.guesses['item']:
             if guess['timestamp'] < expiration:
                 continue
             if guess['guess'] is not item:
                 continue
-            try:
-                streamer = Streamer.objects.get( #pylint: disable=no-member
-                    channel_id=self.database['channel-id'], participants__user_id=guess['user-id'])
-            except Streamer.DoesNotExist: #pylint: disable=no-member
-                self.logger.error('Participant with ID %s does not exist in the database',
-                                  guess['user-id'])
-                return 'User %s not found.' % guess['username']
             if not first_guess:
-                for update_participant in streamer.participants:
-                    update_participant.session_points += self.database['streamer'].first_bonus
-                    update_participant.total_points += self.database['streamer'].first_bonus
+                Streamer.objects.filter( #pylint: disable=no-member
+                    channel_id=self.database['streamer'].channel_id,
+                    participants__user_id=guess['user-id']).update(
+                        inc__participants__S__session_points=
+                        self.database['streamer'].first_bonus,
+                        inc__participants__S__total_points=
+                        self.database['streamer'].first_bonus)
                 self.logger.info('User %s made the first correct guess earning %s extra points',
                                  guess['username'], self.database['streamer'].first_bonus)
                 first_guess = True
-            for update_participant in streamer.participants:
-                update_participant.session_points += self.database['streamer'].points
-                update_participant.total_points += self.database['streamer'].points
+            Streamer.objects.filter( #pylint: disable=no-member
+                channel_id=self.database['streamer'].channel_id,
+                participants__user_id=guess['user-id']).modify(
+                    inc__participants__S__session_points=
+                    self.database['streamer'].points,
+                    inc__participants__S__total_points=
+                    self.database['streamer'].points)
             self.logger.info('User %s guessed correctly and earned %s points',
                              guess['username'], self.database['streamer'].points)
-            streamer.save()
-            streamer.reload()
             self.guesses['item'] = deque()
             self.logger.info('Guesses completed')
 
@@ -204,8 +203,9 @@ class GuessingGame():
         try:
             streamer = Streamer.objects.get( #pylint: disable=no-member
                 channel_id=self.database['channel-id'], participants__username=username)
-            if streamer.participants:
-                return '%s has %s points' % (username, streamer.participants[0].session_points)
+            for participant in streamer.participants:
+                if participant.username == username:
+                    return '%s has %s points' % (username, participant.session_points)
         except Streamer.DoesNotExist: #pylint: disable=no-member
             self.logger.error('Participant with username %s does not exist in the database',
                               username)
@@ -215,8 +215,9 @@ class GuessingGame():
         try:
             streamer = Streamer.objects.get( #pylint: disable=no-member
                 channel_id=self.database['channel-id'], participants__username=username)
-            if streamer.participants:
-                return '%s has %s total points' % (username, streamer.participants[0].total_points)
+            for participant in streamer.participants:
+                if participant.username == username:
+                    return '%s has %s points' % (username, participant.total_points)
         except Streamer.DoesNotExist: #pylint: disable=no-member
             self.logger.error('Participant with username %s does not exist in the database',
                               username)
@@ -367,9 +368,13 @@ class GuessingGame():
             return message
 
     def _guess_command(self, command, user):
+        guesser = None
         try:
             streamer = Streamer.objects.get( #pylint: disable=no-member
                 channel_id=self.database['channel-id'], participants__user_id=user['user-id'])
+            for participant in streamer.participants:
+                if participant.user_id == int(user['user-id']):
+                    guesser = participant
         except Streamer.DoesNotExist: #pylint: disable=no-member
             participant = Participant(
                 username=user['username'],
@@ -381,6 +386,9 @@ class GuessingGame():
             self.database['streamer'].reload()
             streamer = Streamer.objects.get( #pylint: disable=no-member
                 channel_id=self.database['channel-id'], participants__user_id=user['user-id'])
+            for participant in streamer.participants:
+                if participant.user_id == int(user['user-id']):
+                    guesser = participant
             self.logger.error(
                 'Participant with ID %s does not exist in the database. Creating participant.',
                 user['user-id'])
@@ -388,14 +396,14 @@ class GuessingGame():
             subcommand_name = command[1]
             command_value = command[2:]
             if subcommand_name == 'medal':
-                return self._do_medal_guess(user, command_value, streamer.participants[0])
+                return self._do_medal_guess(user, command_value, guesser)
             if subcommand_name == 'song':
-                return self._do_song_guess(user, command_value, streamer.participants[0])
+                return self._do_song_guess(user, command_value, guesser)
         if not self.state['running']:
             return None
         command_value = command[1].lower()
         item = self._parse_item(command_value)
-        return self._do_item_guess(user, item, streamer.participants[0])
+        return self._do_item_guess(user, item, guesser)
 
     def _points_command(self, command, user):
         if len(command) == 1:
