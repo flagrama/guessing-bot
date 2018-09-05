@@ -608,8 +608,9 @@ class GuessingGame():
                                       guesser['user-id'])
                     return "User %s does not exist." % guesser['username']
                 for update_participant in streamer.participants:
-                    update_participant.session_points += hiscore
-                    update_participant.total_points += hiscore
+                    if update_participant.user_id == int(guesser['user-id']):
+                        update_participant.session_points += hiscore
+                        update_participant.total_points += hiscore
                 self.logger.info('User %s guessed correctly and earned %s points',
                                  guesser['username'], hiscore)
                 streamer.save()
@@ -623,10 +624,6 @@ class GuessingGame():
             return None
         self.state['running'] = True
         message = 'Guessing game started by %s' % user['username']
-        for participant in self.database['streamer'].participants:
-            participant.session_points = 0
-        self.database['streamer'].save()
-        self.database['streamer'].reload()
         self.logger.info(message)
         return message
 
@@ -643,6 +640,8 @@ class GuessingGame():
         self.state['songs'].clear()
         self.state['medals'].clear()
         self.database['streamer'].sessions.append(self.database['current-session'])
+        self.database['streamer'].save()
+        self.database['streamer'].reload()
         self.database['latest-session'] = self.database['current-session']
         self.database['current-session'] = Session()
         for participant in self.database['streamer'].participants:
