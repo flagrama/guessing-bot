@@ -554,8 +554,9 @@ class GuessingGame():
                                       guesser['user-id'])
                     return "User %s does not exist." % guesser['username']
                 for update_participant in streamer.participants:
-                    update_participant.session_points += hiscore
-                    update_participant.total_points += hiscore
+                    if update_participant.user_id == int(guesser['user-id']):
+                        update_participant.session_points += hiscore
+                        update_participant.total_points += hiscore
                 self.logger.info('User %s guessed correctly and earned %s points',
                                  guesser['username'], hiscore)
                 streamer.save()
