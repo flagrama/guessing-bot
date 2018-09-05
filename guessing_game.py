@@ -8,7 +8,6 @@ import csv
 
 import boto3
 import jstyleson
-import mongoengine
 
 from database.streamer import Streamer
 from database.participant import Participant
@@ -170,11 +169,13 @@ class GuessingGame():
             self.logger.info('Item %s not found', item)
             return
         expiration = datetime.now() - timedelta(minutes=15)
+        new_guess_deque = deque()
         first_guess = False
         for guess in self.guesses['item']:
             if guess['timestamp'] < expiration:
                 continue
             if guess['guess'] is not item:
+                new_guess_deque.append(guess)
                 continue
             if not first_guess:
                 Streamer.objects.filter( #pylint: disable=no-member
@@ -196,7 +197,7 @@ class GuessingGame():
                     self.database['streamer'].points)
             self.logger.info('User %s guessed correctly and earned %s points',
                              guess['username'], self.database['streamer'].points)
-            self.guesses['item'] = deque()
+            self.guesses['item'] = new_guess_deque
             self.logger.info('Guesses completed')
 
     def _do_points_check(self, username):
