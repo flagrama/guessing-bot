@@ -476,7 +476,7 @@ class GuessingGame():
                 if exc.errno != errno.EEXIST:
                     raise
         report_writer = csv.writer(
-            open(file, 'w'))
+            open(file, 'w', newline=''))
         for participant in self.database['streamer'].participants:
             report_writer.writerow([participant.user_id, participant.username,
                                     participant.total_points])
@@ -657,7 +657,7 @@ class GuessingGame():
             except OSError as exc:
                 if exc.errno != errno.EEXIST:
                     raise
-        report_writer = csv.writer(open(file, 'w'))
+        report_writer = csv.writer(open(file, 'w', newline=''))
         for guess in self.database['latest-session'].guesses:
             report_writer.writerow([guess.timestamp, guess.participant, guess.participant_name,
                                     guess.guess_type, guess.guess, guess.session_points,
