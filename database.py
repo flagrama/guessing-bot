@@ -1,17 +1,21 @@
+"""Stores the mongoengine database classes."""
 import datetime
 import mongoengine
 
 class Command(mongoengine.EmbeddedDocument):
+    """The custom command database class."""
     name = mongoengine.StringField(required=True)
     output = mongoengine.StringField(required=True)
 
 class Participant(mongoengine.EmbeddedDocument):
+    """The participant database class."""
     username = mongoengine.StringField(required=True)
     user_id = mongoengine.IntField(required=True)
     session_points = mongoengine.IntField()
     total_points = mongoengine.IntField()
 
 class SessionLogEntry(mongoengine.EmbeddedDocument):
+    """The session log entry database class."""
     timestamp = mongoengine.DateTimeField(required=True, default=datetime.datetime.now())
     participant = mongoengine.IntField(required=True)
     participant_name = mongoengine.StringField(required=True)
@@ -21,18 +25,22 @@ class SessionLogEntry(mongoengine.EmbeddedDocument):
     total_points = mongoengine.IntField(required=True)
 
 class Session(mongoengine.EmbeddedDocument):
+    """The session database class."""
     guesses = mongoengine.ListField(mongoengine.EmbeddedDocumentField(SessionLogEntry))
 
 class WhitelistUser(mongoengine.EmbeddedDocument):
+    """The whitelist user database class."""
     username = mongoengine.StringField(required=True)
     user_id = mongoengine.IntField(required=True)
 
 
 class BlacklistUser(mongoengine.EmbeddedDocument):
+    """The blacklist user database class."""
     username = mongoengine.StringField(required=True)
     user_id = mongoengine.IntField(required=True)
 
 class Streamer(mongoengine.Document):
+    """The streamer database class."""
     name = mongoengine.StringField(required=True)
     channel_id = mongoengine.StringField(required=True, unique=True)
     first_bonus = mongoengine.IntField(default=1)

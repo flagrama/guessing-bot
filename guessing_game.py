@@ -1,5 +1,4 @@
 """This module provides an interface for running a guessing game."""
-import logging
 import os.path
 import errno
 from datetime import datetime, timedelta
@@ -19,12 +18,7 @@ class GuessingGame():
     """This is a class for running a guessing game."""
     def __init__(self, streamer):
         """The constructor for GuessingGame class."""
-        logging.basicConfig()
-        self.logger = logging.getLogger(__name__)
-        if settings.DEBUG:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
+        self.logger = settings.init_logger(__name__)
         with open('items.json') as items:
             self.items = jstyleson.load(items)
         self.guesses = {
@@ -501,6 +495,7 @@ class GuessingGame():
             return None
         if len(command) > 1:
             return self._complete_song_guess(command[1:])
+        return None
 
     def _complete_medal_guess(self, command):
         if len(command) < 2:
@@ -556,6 +551,7 @@ class GuessingGame():
                 streamer.reload()
                 self.guesses['medal'] = deque()
                 self.logger.info('Medal guesses completed')
+        return None
 
     def _complete_song_guess(self, command):
         if len(command) < 2:
@@ -610,6 +606,7 @@ class GuessingGame():
                 streamer.reload()
                 self.guesses['song'] = deque()
                 self.logger.info('Song guesses completed')
+        return None
 
     def _start_command(self, user):
         if self.state['running']:
@@ -664,39 +661,26 @@ class GuessingGame():
 
     # Currently will assume !hud <item> is the Guess Completion command
     def _do_whitelist_command(self, command):
+        commands = {
+            "add": partial(self._add_user_to_whitelist),
+            "remove": partial(self._remove_user_from_whitelist),
+            "ban": partial(self._add_user_to_blacklist),
+            "unban": partial(self._remove_user_from_blacklist)
+        }
         try:
-            _whitelist_command_name = command[1]
+            command_name = command[0]
+            if command_name in commands:
+                return command[command_name](command)
         except IndexError:
-            self.logger.error('Incomplete command')
+            self.logger.error('Command missing arguments')
             return None
+        except KeyError:
+            self.logger.error('Command missing')
+            return None
+        return None
 
-        if _whitelist_command_name == 'add':
-            if self._add_user_to_whitelist(command):
-                message = 'User %s added to whitelist' % command[2]
-                self.logger.info(message)
-                return message
-            return 'Unable to add user to whitelist'
-        if _whitelist_command_name == 'remove':
-            if self._remove_user_from_whitelist(command):
-                message = 'User %s removed from whitelist' % command[2]
-                self.logger.info(message)
-                return message
-            return 'Unable to remove user from whitelist'
-        if _whitelist_command_name == 'ban':
-            if self._add_user_to_blacklist(command):
-                message = 'User %s added to blacklist' % command[2]
-                self.logger.info(message)
-                return message
-            return 'Unable to add user to blacklist'
-        if _whitelist_command_name == 'unban':
-            if self._remove_user_from_blacklist(command):
-                message = 'User %s removed from blacklist' % command[2]
-                self.logger.info(message)
-                return message
-            return 'Unable to remove user from blacklist'
-
-
-    def _get_username_from_command(self, command):
+    @staticmethod
+    def _get_username_from_command(command):
         try:
             username = command[2]
             return username
@@ -704,15 +688,16 @@ class GuessingGame():
             return False
 
     def _add_user_to_whitelist(self, command):
+        message = 'Unable to add user to whitelist'
         username = self._get_username_from_command(command)
 
         if not username:
             self.logger.error('Username not provided')
-            return False
+            return message
 
         new_user_id = twitch.get_user_id(username)
         if not new_user_id:
-            return False
+            return message
 
         new_user = WhitelistUser(username=username, user_id=new_user_id)
         try:
@@ -720,56 +705,61 @@ class GuessingGame():
                                             whitelist__user_id=new_user_id)
             if streamer.whitelist:
                 self.logger.info('User with ID %s already exists in the database', new_user_id)
-                return False
+                return message
         except Streamer.DoesNotExist: #pylint: disable=no-member
             self.logger.error('User with ID %s does not exist in the database', new_user_id)
-
         try:
             self.state['database']['streamer'].whitelist.append(new_user)
             self.state['database']['streamer'].save()
             self.state['database']['streamer'].reload()
-            return True
+            message = 'User %s added to whitelist' % command[2]
+            self.logger.info(message)
+            return message
         except mongoengine.NotUniqueError:
             self.logger.error('User with ID %s already exists in the database', new_user_id)
-        return False
+        return message
 
 
     def _remove_user_from_whitelist(self, command):
+        message = 'Unable to remove user from whitelist'
         username = self._get_username_from_command(command)
 
         if not username:
             self.logger.error('Username not provided')
-            return False
+            return message
 
         existing_user_id = twitch.get_user_id(username)
         if not existing_user_id:
-            return False
+            return message
 
         try:
             streamer = Streamer.objects.get(channel_id=self.state['database']['channel-id'], #pylint: disable=no-member
                                             whitelist__user_id=existing_user_id)
             if not streamer.whitelist:
-                return False
+                return message
             Streamer.objects.update(channel_id=self.state['database']['channel-id'], #pylint: disable=no-member
                                     pull__whitelist__user_id=existing_user_id)
             self.state['database']['streamer'].save()
             self.state['database']['streamer'].reload()
-            return True
+            message = 'User %s removed from whitelist' % command[2]
+            self.logger.info(message)
+            return message
         except Streamer.DoesNotExist: #pylint: disable=no-member
             self.logger.error('User with ID %s does not exist in the database', existing_user_id)
-            return False
+            return message
 
 
     def _add_user_to_blacklist(self, command):
+        message = 'Unable to add user to whitelist'
         username = self._get_username_from_command(command)
 
         if not username:
             self.logger.error('Username not provided')
-            return False
+            return message
 
         new_user_id = twitch.get_user_id(username)
         if not new_user_id:
-            return False
+            return message
 
         new_user = BlacklistUser(username=username, user_id=new_user_id)
         try:
@@ -777,7 +767,7 @@ class GuessingGame():
                                             blacklist__user_id=new_user_id)
             if streamer.blacklist:
                 self.logger.info('User with ID %s already exists in the database', new_user_id)
-                return False
+                return message
         except Streamer.DoesNotExist: #pylint: disable=no-member
             self.logger.error('User with ID %s does not exist in the database', new_user_id)
 
@@ -785,36 +775,41 @@ class GuessingGame():
             self.state['database']['streamer'].blacklist.append(new_user)
             self.state['database']['streamer'].save()
             self.state['database']['streamer'].reload()
-            return True
+            message = 'User %s added to blacklist' % command[2]
+            self.logger.info(message)
+            return message
         except mongoengine.NotUniqueError:
             self.logger.error('User with ID %s already exists in the database', new_user_id)
-        return False
+        return message
 
 
     def _remove_user_from_blacklist(self, command):
+        message = 'Unable to remove user from blacklist'
         username = self._get_username_from_command(command)
 
         if not username:
             self.logger.error('Username not provided')
-            return False
+            return message
 
         existing_user_id = twitch.get_user_id(username)
         if not existing_user_id:
-            return False
+            return message
 
         try:
             streamer = Streamer.objects.get(channel_id=self.state['database']['channel-id'], #pylint: disable=no-member
                                             blacklist__user_id=existing_user_id)
             if not streamer.whitelist:
-                return False
+                return message
             Streamer.objects.update(channel_id=self.state['database']['channel-id'], #pylint: disable=no-member
                                     pull__blacklist__user_id=existing_user_id)
             self.state['database']['streamer'].save()
             self.state['database']['streamer'].reload()
-            return True
+            message = 'User %s removed from blacklist' % command[2]
+            self.logger.info(message)
+            return message
         except Streamer.DoesNotExist: #pylint: disable=no-member
             self.logger.error('User with ID %s does not exist in the database', existing_user_id)
-            return False
+            return message
 
     def _check_items_allowed(self, item):
         if any(skip in item for skip in self.state['guessables']['blacklist']):

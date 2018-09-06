@@ -1,15 +1,9 @@
 """Contains the functions and classes of the bot's basic commands."""
-import logging
 from functools import partial
 import custom_commands
 import settings
 
-logging.basicConfig()
-LOGGER = logging.getLogger(__name__)
-if settings.DEBUG:
-    LOGGER.setLevel(logging.DEBUG)
-else:
-    LOGGER.setLevel(logging.INFO)
+LOGGER = settings.init_logger(__name__)
 
 def add_command(bot, command):
     """Adds a custom command to the database."""

@@ -1,6 +1,5 @@
 """A Twitch chat IRC bot."""
 import os
-import logging
 
 import irc.bot
 import mongoengine
@@ -14,13 +13,7 @@ import guessing_game
 class TwitchBot(irc.bot.SingleServerIRCBot):
     """An IRC bot for connecting to Twitch chat servers."""
     def __init__(self):
-        logging.basicConfig()
-        self.logger = logging.getLogger(__name__)
-        if settings.DEBUG:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
-
+        self.logger = settings.init_logger(__name__)
         self.config = {
             "username": os.environ['TWITCH_BOT_NAME'],
             "channel_name": os.environ['TWITCH_CHANNEL'],
@@ -49,14 +42,6 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         self.logger.debug(self.commands)
 
     # Methods
-    def _init_logging(self, debug):
-        logging.basicConfig()
-        self.logger = logging.getLogger(__name__)
-        if debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
-
     def _get_channel_id(self):
         self.config['channel_id'] = twitch.get_user_id(self.config['channel_name'])
         self.logger.debug('Channel ID is %s', self.config['channel_id'])
