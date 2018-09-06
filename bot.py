@@ -121,7 +121,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
                     blacklist__user_id=tag['value']):
                         blacklist = True
             if tag['key'] == 'mod':
-                if tag['value'] == 1:
+                if tag['value'] == '1':
                     mod = True
         permissions = {
             "mod": mod,
@@ -133,6 +133,11 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
             "user-id": self.get_user_id(user_string[0]),
             "channel-id": self.channel_id
         }
+        self.logger.debug("User: %s, Permissions{ Mod: %s, Whitelist: %s, Blacklist: %s}",
+                           user['username'],
+                           permissions['mod'],
+                           permissions['whitelist'],
+                           permissions['blacklist'])
         return user, permissions
 
     def do_command(self, event, command):
