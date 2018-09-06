@@ -45,7 +45,7 @@ class GuessingGame():
                 },
                 {
                     "name": "songsanity",
-                    "items": self.state['guessables']['songs']
+                    "items": None
                 },
                 {
                     "name": "egg",
@@ -81,6 +81,9 @@ class GuessingGame():
                 "latest-session": None
             }
         }
+        for mode in self.state['modes']:
+            if mode['name'] == 'songsaniyt':
+                mode['items'] = self.state['guessables']['songs']
         self.commands = {
             "whitelist": ['add', 'remove', 'ban', 'unban'],
             "game_commands": {
