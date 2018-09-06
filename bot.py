@@ -167,7 +167,6 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
                     self.logger.info('Ignoring message from self')
                     return
         command = event.arguments[0].split(' ')
-        command = [comm.lower() for comm in command]
         commands = []
         for existing in self.commands:
             commands += self.commands[existing]
