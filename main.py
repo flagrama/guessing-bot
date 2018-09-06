@@ -1,27 +1,27 @@
+"""The module that starts the IRC chat bot."""
 import argparse
 import logging
 
 import settings
 import bot
 
-def main(debug):
-    settings.DEBUG = debug
-    client = bot.TwitchBot()
-    client.start()
+logging.basicConfig()
+LOGGER = logging.getLogger(__name__)
+LOGGER.setLevel(logging.INFO)
 
-if __name__ == "__main__":
-    logging.basicConfig()
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-
-    parser = argparse.ArgumentParser(\
-        description='A bot for making a game of guessing upcoming items in \
-        randomizers.')
+def main():
+    """The Main function of the bot. Starts the IRC bot."""
+    parser = argparse.ArgumentParser(
+        description='A bot for making a game of guessing upcoming items in randomizers.')
     parser.add_argument('--debug', dest='debug', action='store_true', default=False)
     args = parser.parse_args()
-
+    settings.DEBUG = args.debug
     try:
-        main(args.debug)
+        client = bot.TwitchBot()
+        client.start()
     except KeyboardInterrupt:
         print('\n')
-        logger.info('SIGINT recieved. Terminating.')
+        LOGGER.info('SIGINT recieved. Terminating.')
+
+if __name__ == "__main__":
+    main()
