@@ -35,10 +35,9 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         self._database_connect()
         self._get_streamer_from_database()
         self.guessing_game = guessing_game.GuessingGame(self.streamer)
-        self.commands['guessing-game'] = (self.guessing_game.commands['game_commands']
-                                          + self.guessing_game.commands['config_commands']
-                                          + self.guessing_game.commands['mod_commands']
-                                          + self.guessing_game.commands['game_state_commands'])
+        for command_category in self.guessing_game.commands:
+            for command in self.guessing_game.commands[command_category]:
+                self.commands['guessing-game'] += [command]
         self.logger.debug(self.commands)
 
     # Methods
