@@ -1,3 +1,4 @@
+"""A Twitch chat IRC bot."""
 import os
 import logging
 
@@ -11,6 +12,7 @@ import default_commands
 import guessing_game
 
 class TwitchBot(irc.bot.SingleServerIRCBot):
+    """An IRC bot for connecting to Twitch chat servers."""
     def __init__(self):
         logging.basicConfig()
         self.logger = logging.getLogger(__name__)
@@ -29,22 +31,25 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
             "guessing-game": [],
             "custom": []
         }
-        self.get_channel_id()
-        self.get_self_id()
+        self._get_channel_id()
+        self._get_self_id()
         server = 'irc.chat.twitch.tv'
         port = 6667
         self.logger.info('Connecting to %s on port %s...', server, port)
         irc.bot.SingleServerIRCBot.__init__(
             self, [(server, port, twitch.TOKEN)], self.config['username'], self.config['username'])
         self.logger.info('Connecting to database...')
-        self.database_connect()
-        self.get_streamer_from_database()
+        self._database_connect()
+        self._get_streamer_from_database()
         self.guessing_game = guessing_game.GuessingGame(self.streamer)
-        self.commands['guessing-game'] = self.guessing_game.commands['default']
+        self.commands['guessing-game'] = (self.guessing_game.commands['game_commands']
+                                          + self.guessing_game.commands['config_commands']
+                                          + self.guessing_game.commands['mod_commands']
+                                          + self.guessing_game.commands['game_state_commands'])
         self.logger.debug(self.commands)
 
     # Methods
-    def init_logging(self, debug):
+    def _init_logging(self, debug):
         logging.basicConfig()
         self.logger = logging.getLogger(__name__)
         if debug:
@@ -52,45 +57,42 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         else:
             self.logger.setLevel(logging.INFO)
 
-    def get_default_commands(self):
-        self.default_commands = ['!addcom', '!delcom', '!editcom']
-        self.commands = self.default_commands[:]
-        self.logger.debug(self.commands)
-
-    def get_channel_id(self):
+    def _get_channel_id(self):
         self.config['channel_id'] = twitch.get_user_id(self.config['channel_name'])
         self.logger.debug('Channel ID is %s', self.config['channel_id'])
 
-    def get_self_id(self):
+    def _get_self_id(self):
         self.config['id'] = twitch.get_user_id(self.config['username'])
         self.logger.debug('Self ID is %s', self.config['id'])
 
 
-    def database_connect(self):
+    def _database_connect(self):
         try:
             mongodb_uri = os.environ['MONGODB_URI']
             mongoengine.connect(host=mongodb_uri)
             self.logger.debug('Connected to database.')
-        except mongoengine.connection.MongoEngineConnectionError as e:
+        except mongoengine.connection.MongoEngineConnectionError as error:
             self.logger.error('Unable to connect to database!')
-            self.logger.error(e)
-            raise e
+            self.logger.error(error)
+            raise error
 
-    def get_streamer_from_database(self):
+    def _get_streamer_from_database(self):
         for streamer in Streamer.objects(channel_id=self.config['channel_id']): #pylint: disable=no-member
             self.streamer = streamer
 
         if not hasattr(self, 'streamer'):
             self.logger.debug(
                 'Unable to find streamer with ID %s in the database', self.config['channel_id'])
-            self.logger.debug('Creating new entry for streamer with ID %s', self.config['channel_id'])
-            self.streamer = Streamer(name = self.config['channel_name'], channel_id = self.config['channel_id'])
+            self.logger.debug('Creating new entry for streamer with ID %s',
+                              self.config['channel_id'])
+            self.streamer = Streamer(name=self.config['channel_name'],
+                                     channel_id=self.config['channel_id'])
             self.streamer.save()
 
         for command in self.streamer.commands:
             self.commands['custom'] += [command.name]
 
-    def get_user_permissions(self, event):
+    def _get_user_permissions(self, event):
         mod = False
         whitelist = False
         blacklist = False
@@ -123,24 +125,23 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         }
         return user, permissions
 
-    def do_command(self, event, command):
-        connection = self.connection
+    def _do_command(self, event, connection, command):
         command_name = command[0].lower()
-        user, permissions = self.get_user_permissions(event)
+        user, permissions = self._get_user_permissions(event)
         if command_name in self.commands['guessing-game']:
             message = self.guessing_game.do_command(user, permissions, command)
             if message:
-                self.connection.privmsg(self.config['channel'], message)
+                connection.privmsg(self.config['channel'], message)
             return
         if command_name in self.commands['default'] and permissions['mod']:
             message = default_commands.do_default_command(self, command)
             if message:
-                self.connection.privmsg(self.config['channel'], message)
+                connection.privmsg(self.config['channel'], message)
             return
         self.logger.debug('Built-in command not found')
         try:
             streamer = Streamer.objects.get( #pylint: disable=no-member
-                channel_id = self.streamer.channel_id, commands__name = command_name)
+                channel_id=self.streamer.channel_id, commands__name=command_name)
             for custom_command in streamer.commands:
                 if command_name in custom_command['name']:
                     self.logger.info('Custom command %s received', custom_command.name)
@@ -151,6 +152,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
 
     # Events
     def on_welcome(self, connection, event):
+        """Event that executes when IRC bot is welcomed to the IRC server."""
         self.logger.info('Joining %s', self.config['channel'])
         self.logger.debug(event)
 
@@ -160,6 +162,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         connection.join(self.config['channel'])
 
     def on_pubmsg(self, connection, event):
+        """Event that executes whenever an IRC message is receieved."""
         self.logger.debug(event)
         for tag in event.tags:
             if tag['key'] == 'user-id':
@@ -171,4 +174,4 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         for existing in self.commands:
             commands += self.commands[existing]
         if command[0].lower() in commands:
-            self.do_command(event, command)
+            self._do_command(event, connection, command)
