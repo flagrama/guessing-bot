@@ -4,6 +4,7 @@ import os.path
 import errno
 from datetime import datetime, timedelta
 from collections import deque, OrderedDict
+from functools import partial
 import csv
 
 import boto3
@@ -24,43 +25,13 @@ class GuessingGame():
             self.logger.setLevel(logging.DEBUG)
         else:
             self.logger.setLevel(logging.INFO)
-        self.database = {
-            "streamer": streamer,
-            "channel-id": streamer.channel_id,
-            "current-session": None,
-            "latest-session": None
-        }
         with open('items.json') as items:
             self.items = jstyleson.load(items)
-        self.commands = {
-            "whitelist": ['add', 'remove', 'ban', 'unban'],
-            "default": ['!guess', '!hud', '!points', '!guesspoints', '!firstguess', '!start',
-                       '!mode', '!modedel', '!song', '!finish', '!report']
-        }
         self.guesses = {
             "item": deque(),
             "medal": deque(),
             "song": deque()
         }
-        self.guessables = {
-            "blacklist": [
-                'Keys', 'Treasures', 'Skulls', 'Tokens', 'Prize', 'Label', 'Badge',
-                'Heart Container', 'Pieces'
-            ],
-            "medals": [
-                'forest', 'fire', 'water', 'shadow', 'spirit', 'light'
-            ],
-            "dungeons": [
-                'deku', 'dodongo', 'jabu'
-            ],
-            "songs": [
-                "Zelda's Lullaby", "Saria's Song", "Epona's Song", "Sun's Song",
-                "Song of Time", "Song of Storms", "Minuet of Forest", "Bolero of Fire",
-                "Serenade of Water", "Requiem of Spirit", "Nocturne of Shadow", "Prelude of Light"
-            ]
-        }
-        self.guessables['dungeons'] += [
-            medal for medal in self.guessables['medals'] if medal != 'light']
         self.state = {
             "running": False,
             "freebie": None,
@@ -74,7 +45,7 @@ class GuessingGame():
                 },
                 {
                     "name": "songsanity",
-                    "items": self.guessables['songs']
+                    "items": self.state['guessables']['songs']
                 },
                 {
                     "name": "egg",
@@ -84,17 +55,63 @@ class GuessingGame():
                     "name": "ocarina",
                     "items": ["Ocarina"]
                 }
-            ]
+            ],
+            "guessables": {
+                "blacklist": [
+                    'Keys', 'Treasures', 'Skulls', 'Tokens', 'Prize', 'Label', 'Badge',
+                    'Heart Container', 'Pieces'
+                ],
+                "medals": [
+                    'forest', 'fire', 'water', 'shadow', 'spirit', 'light'
+                ],
+                "dungeons": [
+                    'deku', 'dodongo', 'jabu'
+                ],
+                "songs": [
+                    "Zelda's Lullaby", "Saria's Song", "Epona's Song", "Sun's Song",
+                    "Song of Time", "Song of Storms", "Minuet of Forest", "Bolero of Fire",
+                    "Serenade of Water", "Requiem of Spirit", "Nocturne of Shadow",
+                    "Prelude of Light"
+                ]
+            },
+            "database": {
+                "streamer": streamer,
+                "channel-id": streamer.channel_id,
+                "current-session": None,
+                "latest-session": None
+            }
         }
-
-        self.database['latest-session'] = self._get_sessions()
-
-        self.logger.setLevel(logging.DEBUG)
+        self.commands = {
+            "whitelist": ['add', 'remove', 'ban', 'unban'],
+            "game_commands": {
+                '!guess': partial(self._guess_command),
+                '!points': partial(self._points_command),
+            },
+            "config_commands": {
+                '!guesspoints': partial(self._guesspoints_command),
+                '!firstguess': partial(self._firstguest_command),
+                '!mode': partial(self._mode_command),
+                '!modedel': partial(self._modedel_command)
+            },
+            "mod_commands": {
+                '!hud': partial(self._hud_command),
+                '!song': partial(self._song_command),
+                '!report': partial(self._report_command)
+            },
+            "game_state_commands": {
+                '!start': partial(self._start_command),
+                '!finish': partial(self._finish_command)
+            }
+        }
+        self.state['guessables']['dungeons'] += [
+            medal for medal in self.state['guessables']['medals'] if medal != 'light']
+        self.state['database']['latest-session'] = self._get_sessions()
 
     def _get_sessions(self):
-        self.database['current-session'] = Session()
-        if self.database['streamer'].sessions:
-            return self.database['streamer'].sessions[len(self.database['streamer'].sessions) - 1]
+        self.state['database']['current-session'] = Session()
+        if self.state['database']['streamer'].sessions:
+            return self.state['database']['streamer'].sessions[len(
+                self.state['database']['streamer'].sessions) - 1]
         return None
 
     def do_command(self, user, permissions, command):
@@ -112,56 +129,20 @@ class GuessingGame():
         """
         try:
             command_name = command[0]
-            if (command_name == '!guesspoints'
+            if command_name in self.commands['game_commands']:
+                return self.commands['game_commands'][command_name](command, user)
+            if (command_name in self.commands['config_commands']
                     and (permissions['whitelist'] or permissions['mod'])
                     and not permissions['blacklist']):
-                return self._set_guess_points(command)
-
-            if (command_name == '!firstguess'
+                return self.commands['config_commands'][command_name](command, user)
+            if (command_name in self.commands['mod_commands']
                     and (permissions['whitelist'] or permissions['mod'])
                     and not permissions['blacklist']):
-                return self._set_first_guess(command)
-
-            if command_name == '!guess':
-                return self._guess_command(command, user)
-
-            if command_name == '!points':
-                return self._points_command(command, user)
-
-            if (command_name == '!mode'
+                return self.commands['mod_commands'][command_name](command)
+            if (command_name in self.commands['game_state_commands']
                     and (permissions['whitelist'] or permissions['mod'])
                     and not permissions['blacklist']):
-                return self._mode_command(command, user)
-
-            if (command_name == '!modedel'
-                    and (permissions['whitelist'] or permissions['mod'])
-                    and not permissions['blacklist']):
-                return self._modedel_command(command, user)
-
-            if (command_name == '!hud'
-                    and (permissions['whitelist'] or permissions['mod'])
-                    and not permissions['blacklist']):
-                return self._hud_command(command)
-
-            if (command_name == '!song'
-                    and (permissions['whitelist'] or permissions['mod'])
-                    and not permissions['blacklist']):
-                return self._song_command(command)
-
-            if (command_name == '!report'
-                    and (permissions['whitelist'] or permissions['mod'])
-                    and not permissions['blacklist']):
-                return self._report_command(command)
-
-            if (command_name == '!start'
-                    and (permissions['whitelist'] or permissions['mod'])
-                    and not permissions['blacklist']):
-                return self._start_guessing_game(user)
-
-            if (command_name == '!finish'
-                    and (permissions['whitelist'] or permissions['mod'])
-                    and not permissions['blacklist']):
-                return self._end_guessing_game(user)
+                return self.commands['game_state_commands'][command_name](command)
         except IndexError:
             self.logger.error('Command missing arguments')
         return None
@@ -184,31 +165,31 @@ class GuessingGame():
                 continue
             if not first_guess:
                 Streamer.objects.filter( #pylint: disable=no-member
-                    channel_id=self.database['streamer'].channel_id,
+                    channel_id=self.state['database']['streamer'].channel_id,
                     participants__user_id=guess['user-id']).update(
                         inc__participants__S__session_points=
-                        self.database['streamer'].first_bonus,
+                        self.state['database']['streamer'].first_bonus,
                         inc__participants__S__total_points=
-                        self.database['streamer'].first_bonus)
+                        self.state['database']['streamer'].first_bonus)
                 self.logger.info('User %s made the first correct guess earning %s extra points',
-                                 guess['username'], self.database['streamer'].first_bonus)
+                                 guess['username'], self.state['database']['streamer'].first_bonus)
                 first_guess = True
             Streamer.objects.filter( #pylint: disable=no-member
-                channel_id=self.database['streamer'].channel_id,
+                channel_id=self.state['database']['streamer'].channel_id,
                 participants__user_id=guess['user-id']).modify(
                     inc__participants__S__session_points=
-                    self.database['streamer'].points,
+                    self.state['database']['streamer'].points,
                     inc__participants__S__total_points=
-                    self.database['streamer'].points)
+                    self.state['database']['streamer'].points)
             self.logger.info('User %s guessed correctly and earned %s points',
-                             guess['username'], self.database['streamer'].points)
+                             guess['username'], self.state['database']['streamer'].points)
             self.guesses['item'] = new_guess_deque
             self.logger.info('Guesses completed')
 
     def _do_points_check(self, username):
         try:
             streamer = Streamer.objects.get( #pylint: disable=no-member
-                channel_id=self.database['channel-id'], participants__username=username)
+                channel_id=self.state['database']['channel-id'], participants__username=username)
             for participant in streamer.participants:
                 if participant.username == username:
                     return '%s has %s points' % (username, participant.session_points)
@@ -220,7 +201,7 @@ class GuessingGame():
     def _do_total_points_check(self, username):
         try:
             streamer = Streamer.objects.get( #pylint: disable=no-member
-                channel_id=self.database['channel-id'], participants__username=username)
+                channel_id=self.state['database']['channel-id'], participants__username=username)
             for participant in streamer.participants:
                 if participant.username == username:
                     return '%s has %s points' % (username, participant.total_points)
@@ -251,7 +232,7 @@ class GuessingGame():
             session_points=participant.session_points,
             total_points=participant.total_points
         )
-        self.database['current-session'].guesses.append(guess)
+        self.state['database']['current-session'].guesses.append(guess)
         self.guesses['item'].append(item_guess)
         self.logger.info('%s Item %s guessed by user %s', now, item, user['username'])
         self.logger.debug(self.guesses['item'])
@@ -272,7 +253,7 @@ class GuessingGame():
         i = 0
         for medal in medal_guess:
             guess = medals[i]
-            if guess not in self.guessables['dungeons'] and guess != 'free':
+            if guess not in self.state['guessables']['dungeons'] and guess != 'free':
                 self.logger.info('Invalid medal %s', guess)
                 return
             if medal == self.state['freebie'] or guess == 'free':
@@ -288,7 +269,7 @@ class GuessingGame():
             session_points=participant.session_points,
             total_points=participant.total_points
         )
-        self.database['current-session'].guesses.append(guess)
+        self.state['database']['current-session'].guesses.append(guess)
         medal_guess['user-id'] = user['user-id']
         medal_guess['username'] = user['username']
         medal_guess['timestamp'] = datetime.now()
@@ -317,7 +298,7 @@ class GuessingGame():
         i = 0
         for song in song_guess:
             guess = songs[i]
-            songname = self._parse_songs(guess)
+            songname = self.parse_songs(guess)
             if not songname:
                 self.logger.info('Invalid song %s', guess)
                 return
@@ -332,20 +313,20 @@ class GuessingGame():
             session_points=participant.session_points,
             total_points=participant.total_points
         )
-        self.database['current-session'].guesses.append(guess)
+        self.state['database']['current-session'].guesses.append(guess)
         song_guess['user-id'] = user['user-id']
         song_guess['username'] = user['username']
         song_guess['timestamp'] = datetime.now()
         self.guesses['song'].append(song_guess)
         self.logger.debug(song_guess)
 
-    def _set_guess_points(self, command):
+    def _guesspoints_command(self, command):
         try:
             command_value = command[1]
             if int(command_value) > 0:
                 message = 'Set points value to %s' % command_value
-                self.database['streamer'].points = int(command_value)
-                self.database['streamer'].save()
+                self.state['database']['streamer'].points = int(command_value)
+                self.state['database']['streamer'].save()
                 self.logger.info(message)
                 return message
             message = 'Cannot set points value lower than 0'
@@ -356,13 +337,13 @@ class GuessingGame():
             self.logger.error(message)
             return message
 
-    def _set_first_guess(self, command):
+    def _firstguest_command(self, command):
         try:
             command_value = command[1]
             if int(command_value) > 0:
                 message = 'Set first guess bonus to %s' % command_value
-                self.database['streamer'].first_bonus = int(command_value)
-                self.database['streamer'].save()
+                self.state['database']['streamer'].first_bonus = int(command_value)
+                self.state['database']['streamer'].save()
                 self.logger.info(message)
                 return message
             message = 'Cannot set first guess bonus lower than 0'
@@ -377,7 +358,8 @@ class GuessingGame():
         guesser = None
         try:
             streamer = Streamer.objects.get( #pylint: disable=no-member
-                channel_id=self.database['channel-id'], participants__user_id=user['user-id'])
+                channel_id=self.state['database']['channel-id'],
+                participants__user_id=user['user-id'])
             for participant in streamer.participants:
                 if participant.user_id == int(user['user-id']):
                     guesser = participant
@@ -387,11 +369,12 @@ class GuessingGame():
                 user_id=user['user-id'],
                 session_points=0,
                 total_points=0)
-            self.database['streamer'].participants.append(participant)
-            self.database['streamer'].save()
-            self.database['streamer'].reload()
+            self.state['database']['streamer'].participants.append(participant)
+            self.state['database']['streamer'].save()
+            self.state['database']['streamer'].reload()
             streamer = Streamer.objects.get( #pylint: disable=no-member
-                channel_id=self.database['channel-id'], participants__user_id=user['user-id'])
+                channel_id=self.state['database']['channel-id'],
+                participants__user_id=user['user-id'])
             for participant in streamer.participants:
                 if participant.user_id == int(user['user-id']):
                     guesser = participant
@@ -408,7 +391,7 @@ class GuessingGame():
         if not self.state['running']:
             return None
         command_value = command[1].lower()
-        item = self._parse_item(command_value)
+        item = self.parse_item(command_value)
         return self._do_item_guess(user, item, guesser)
 
     def _points_command(self, command, user):
@@ -482,7 +465,7 @@ class GuessingGame():
                     raise
         report_writer = csv.writer(
             open(file, 'w', newline=''))
-        for participant in self.database['streamer'].participants:
+        for participant in self.state['database']['streamer'].participants:
             report_writer.writerow([participant.user_id, participant.username,
                                     participant.total_points])
         bucket = amazon_s3.Bucket(os.environ('S3_BUCKET'))
@@ -493,18 +476,18 @@ class GuessingGame():
         if len(command) > 1:
             subcommand_name = command[1]
             if subcommand_name in self.commands['whitelist']:
-                return self.do_whitelist_command(command)
-            if subcommand_name in self.guessables['medals']:
+                return self._do_whitelist_command(command)
+            if subcommand_name in self.state['guessables']['medals']:
                 return self._complete_medal_guess(command[1:])
         if not self.state['running']:
             self.logger.info('Guessing game not running')
             return None
         if len(command) > 1:
             subcommand_name = command[1]
-            if subcommand_name in self.guessables['medals']:
+            if subcommand_name in self.state['guessables']['medals']:
                 return self._complete_medal_guess(command[1:])
         command_value = command[1].lower()
-        item = self._parse_item(command_value)
+        item = self.parse_item(command_value)
         return self._complete_guess(item)
 
     def _song_command(self, command):
@@ -519,12 +502,12 @@ class GuessingGame():
     def _complete_medal_guess(self, command):
         if len(command) < 2:
             return None
-        if command[1] not in self.guessables['dungeons']:
+        if command[1] not in self.state['guessables']['dungeons']:
             if not self.state['running'] and command[1] == 'free':
                 self.state['freebie'] = command[0]
                 self.logger.info('Medal %s set to freebie', command[0])
             return None
-        if command[0] in self.guessables['medals']:
+        if command[0] in self.state['guessables']['medals']:
             if command[0] in self.state['medals']:
                 self.logger.info('Medal %s already in guesses')
                 if self.state['medals'][command[0]] != command[1]:
@@ -554,7 +537,7 @@ class GuessingGame():
                     continue
                 try:
                     streamer = Streamer.objects.get( #pylint: disable=no-member
-                        channel_id=self.database['channel-id'],
+                        channel_id=self.state['database']['channel-id'],
                         participants__user_id=guesser['user-id'])
                 except Streamer.DoesNotExist: #pylint: disable=no-member
                     self.logger.error('Participant with ID %s does not exist in the database',
@@ -575,11 +558,11 @@ class GuessingGame():
         if len(command) < 2:
             self.logger.info('Not enough arguments for song')
             return None
-        new_song = self._parse_songs(command[0])
-        new_location = self._parse_songs(command[1])
+        new_song = self.parse_songs(command[0])
+        new_location = self.parse_songs(command[1])
         if not new_song or not new_location:
             return None
-        if new_song in self.guessables['songs']:
+        if new_song in self.state['guessables']['songs']:
             if new_song in self.state['songs']:
                 self.logger.info('Song %s already in guesses')
                 if self.state['songs'][new_song] != new_location:
@@ -608,7 +591,7 @@ class GuessingGame():
                     continue
                 try:
                     streamer = Streamer.objects.get( #pylint: disable=no-member
-                        channel_id=self.database['channel-id'],
+                        channel_id=self.state['database']['channel-id'],
                         participants__user_id=guesser['user-id'])
                 except Streamer.DoesNotExist: #pylint: disable=no-member
                     self.logger.error('Participant with ID %s does not exist in the database',
@@ -625,7 +608,7 @@ class GuessingGame():
                 self.guesses['song'] = deque()
                 self.logger.info('Song guesses completed')
 
-    def _start_guessing_game(self, user):
+    def _start_command(self, user):
         if self.state['running']:
             self.logger.info('Guessing game already running')
             return None
@@ -634,7 +617,7 @@ class GuessingGame():
         self.logger.info(message)
         return message
 
-    def _end_guessing_game(self, user):
+    def _finish_command(self, user):
         if not self.state['running']:
             self.logger.info('Guessing game not running')
             return None
@@ -646,15 +629,16 @@ class GuessingGame():
         self.state['mode'].clear()
         self.state['songs'].clear()
         self.state['medals'].clear()
-        self.database['streamer'].sessions.append(self.database['current-session'])
-        self.database['streamer'].save()
-        self.database['streamer'].reload()
-        self.database['latest-session'] = self.database['current-session']
-        self.database['current-session'] = Session()
-        for participant in self.database['streamer'].participants:
+        self.state['database']['streamer'].sessions.append(
+            self.state['database']['current-session'])
+        self.state['database']['streamer'].save()
+        self.state['database']['streamer'].reload()
+        self.state['database']['latest-session'] = self.state['database']['current-session']
+        self.state['database']['current-session'] = Session()
+        for participant in self.state['database']['streamer'].participants:
             participant.session_points = 0
-        self.database['streamer'].save()
-        self.database['streamer'].reload()
+        self.state['database']['streamer'].save()
+        self.state['database']['streamer'].reload()
         filename = str(datetime.now()).replace(':', '_')
         file = os.path.join(os.path.curdir, 'reports', filename + '.csv')
         amazon_s3 = boto3.resource('s3')
@@ -665,7 +649,7 @@ class GuessingGame():
                 if exc.errno != errno.EEXIST:
                     raise
         report_writer = csv.writer(open(file, 'w', newline=''))
-        for guess in self.database['latest-session'].guesses:
+        for guess in self.state['database']['latest-session'].guesses:
             report_writer.writerow([guess.timestamp, guess.participant, guess.participant_name,
                                     guess.guess_type, guess.guess, guess.session_points,
                                     guess.total_points])
@@ -676,48 +660,48 @@ class GuessingGame():
         return message
 
     # Currently will assume !hud <item> is the Guess Completion command
-    def do_whitelist_command(self, command):
+    def _do_whitelist_command(self, command):
         try:
-            whitelist_command_name = command[1]
+            _whitelist_command_name = command[1]
         except IndexError:
             self.logger.error('Incomplete command')
             return None
 
-        if whitelist_command_name == 'add':
-            if self.add_user_to_whitelist(command):
+        if _whitelist_command_name == 'add':
+            if self._add_user_to_whitelist(command):
                 message = 'User %s added to whitelist' % command[2]
                 self.logger.info(message)
                 return message
             return 'Unable to add user to whitelist'
-        if whitelist_command_name == 'remove':
-            if self.remove_user_from_whitelist(command):
+        if _whitelist_command_name == 'remove':
+            if self._remove_user_from_whitelist(command):
                 message = 'User %s removed from whitelist' % command[2]
                 self.logger.info(message)
                 return message
             return 'Unable to remove user from whitelist'
-        if whitelist_command_name == 'ban':
-            if self.add_user_to_blacklist(command):
+        if _whitelist_command_name == 'ban':
+            if self._add_user_to_blacklist(command):
                 message = 'User %s added to blacklist' % command[2]
                 self.logger.info(message)
                 return message
             return 'Unable to add user to blacklist'
-        if whitelist_command_name == 'unban':
-            if self.remove_user_from_blacklist(command):
+        if _whitelist_command_name == 'unban':
+            if self._remove_user_from_blacklist(command):
                 message = 'User %s removed from blacklist' % command[2]
                 self.logger.info(message)
                 return message
             return 'Unable to remove user from blacklist'
 
 
-    def get_username_from_command(self, command):
+    def _get_username_from_command(self, command):
         try:
             username = command[2]
             return username
         except IndexError:
             return False
 
-    def add_user_to_whitelist(self, command):
-        username = self.get_username_from_command(command)
+    def _add_user_to_whitelist(self, command):
+        username = self._get_username_from_command(command)
 
         if not username:
             self.logger.error('Username not provided')
@@ -729,7 +713,7 @@ class GuessingGame():
 
         new_user = WhitelistUser(username=username, user_id=new_user_id)
         try:
-            streamer = Streamer.objects.get(channel_id=self.database['channel-id'], #pylint: disable=no-member
+            streamer = Streamer.objects.get(channel_id=self.state['database']['channel-id'], #pylint: disable=no-member
                                             whitelist__user_id=new_user_id)
             if streamer.whitelist:
                 self.logger.info('User with ID %s already exists in the database', new_user_id)
@@ -738,17 +722,17 @@ class GuessingGame():
             self.logger.error('User with ID %s does not exist in the database', new_user_id)
 
         try:
-            self.database['streamer'].whitelist.append(new_user)
-            self.database['streamer'].save()
-            self.database['streamer'].reload()
+            self.state['database']['streamer'].whitelist.append(new_user)
+            self.state['database']['streamer'].save()
+            self.state['database']['streamer'].reload()
             return True
         except mongoengine.NotUniqueError:
             self.logger.error('User with ID %s already exists in the database', new_user_id)
         return False
 
 
-    def remove_user_from_whitelist(self, command):
-        username = self.get_username_from_command(command)
+    def _remove_user_from_whitelist(self, command):
+        username = self._get_username_from_command(command)
 
         if not username:
             self.logger.error('Username not provided')
@@ -759,22 +743,22 @@ class GuessingGame():
             return False
 
         try:
-            streamer = Streamer.objects.get(channel_id = self.database['channel-id'], #pylint: disable=no-member
+            streamer = Streamer.objects.get(channel_id=self.state['database']['channel-id'], #pylint: disable=no-member
                                             whitelist__user_id=existing_user_id)
             if not streamer.whitelist:
                 return False
-            Streamer.objects.update(channel_id=self.database['channel-id'], #pylint: disable=no-member
-                                    pull__whitelist__user_id = existing_user_id)
-            self.database['streamer'].save()
-            self.database['streamer'].reload()
+            Streamer.objects.update(channel_id=self.state['database']['channel-id'], #pylint: disable=no-member
+                                    pull__whitelist__user_id=existing_user_id)
+            self.state['database']['streamer'].save()
+            self.state['database']['streamer'].reload()
             return True
         except Streamer.DoesNotExist: #pylint: disable=no-member
             self.logger.error('User with ID %s does not exist in the database', existing_user_id)
             return False
 
 
-    def add_user_to_blacklist(self, command):
-        username = self.get_username_from_command(command)
+    def _add_user_to_blacklist(self, command):
+        username = self._get_username_from_command(command)
 
         if not username:
             self.logger.error('Username not provided')
@@ -786,8 +770,8 @@ class GuessingGame():
 
         new_user = BlacklistUser(username=username, user_id=new_user_id)
         try:
-            streamer = Streamer.objects.get(channel_id=self.database['streamer'], #pylint: disable=no-member
-                                            blacklist__user_id = new_user_id)
+            streamer = Streamer.objects.get(channel_id=self.state['database']['streamer'], #pylint: disable=no-member
+                                            blacklist__user_id=new_user_id)
             if streamer.blacklist:
                 self.logger.info('User with ID %s already exists in the database', new_user_id)
                 return False
@@ -795,17 +779,17 @@ class GuessingGame():
             self.logger.error('User with ID %s does not exist in the database', new_user_id)
 
         try:
-            self.database['streamer'].blacklist.append(new_user)
-            self.database['streamer'].save()
-            self.database['streamer'].reload()
+            self.state['database']['streamer'].blacklist.append(new_user)
+            self.state['database']['streamer'].save()
+            self.state['database']['streamer'].reload()
             return True
         except mongoengine.NotUniqueError:
             self.logger.error('User with ID %s already exists in the database', new_user_id)
         return False
 
 
-    def remove_user_from_blacklist(self, command):
-        username = self.get_username_from_command(command)
+    def _remove_user_from_blacklist(self, command):
+        username = self._get_username_from_command(command)
 
         if not username:
             self.logger.error('Username not provided')
@@ -816,21 +800,21 @@ class GuessingGame():
             return False
 
         try:
-            streamer = Streamer.objects.get(channel_id=self.database['channel-id'], #pylint: disable=no-member
-                                            blacklist__user_id = existing_user_id)
+            streamer = Streamer.objects.get(channel_id=self.state['database']['channel-id'], #pylint: disable=no-member
+                                            blacklist__user_id=existing_user_id)
             if not streamer.whitelist:
                 return False
-            Streamer.objects.update(channel_id=self.database['channel-id'], #pylint: disable=no-member
-                                    pull__blacklist__user_id = existing_user_id)
-            self.database['streamer'].save()
-            self.database['streamer'].reload()
+            Streamer.objects.update(channel_id=self.state['database']['channel-id'], #pylint: disable=no-member
+                                    pull__blacklist__user_id=existing_user_id)
+            self.state['database']['streamer'].save()
+            self.state['database']['streamer'].reload()
             return True
         except Streamer.DoesNotExist: #pylint: disable=no-member
             self.logger.error('User with ID %s does not exist in the database', existing_user_id)
             return False
 
     def _check_items_allowed(self, item):
-        if any(skip in item for skip in self.guessables['blacklist']):
+        if any(skip in item for skip in self.state['guessables']['blacklist']):
             return False
         for modes in self.state['modes']:
             if modes['name'] not in self.state['mode'] and item in modes['items']:
@@ -850,10 +834,11 @@ class GuessingGame():
         return new_queue
 
     # Integrate with the database in the future
-    def _parse_songs(self, songcode):
+    def parse_songs(self, songcode):
+        """Searches for a song with the value of songcode in its codes entry."""
         for item in self.items:
             if 'name' in item:
-                if not item['name'] in self.guessables['songs']:
+                if not item['name'] in self.state['guessables']['songs']:
                     continue
             if 'stages' in item:
                 codes = []
@@ -867,7 +852,8 @@ class GuessingGame():
                     return item['name']
         return None
 
-    def _parse_item(self, guess):
+    def parse_item(self, guess):
+        """Searches for a item with the value of guess in its codes entry."""
         for item in self.items:
             if 'name' in item:
                 if not self._check_items_allowed(item['name']):
