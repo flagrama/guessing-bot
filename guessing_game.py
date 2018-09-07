@@ -1,7 +1,7 @@
 """This module provides an interface for running a guessing game."""
 import os.path
 import errno
-from datetime import datetime, timedelta
+from datetime import datetime
 from collections import deque
 from functools import partial
 import csv
@@ -340,17 +340,17 @@ class GuessingGame():
                     self.state['database']['channel-id']
                     )
             if subcommand_name in self.state['guessables']['medals']:
-                return self._complete_medal_guess(command[1:])
+                return guessing.complete_medal_guess(self, command[1:])
         if not self.state['running']:
             self.logger.info('Guessing game not running')
             return None
         if len(command) > 1:
             subcommand_name = command[1]
             if subcommand_name in self.state['guessables']['medals']:
-                return self._complete_medal_guess(command[1:])
+                return guessing.complete_medal_guess(self, command[1:])
         command_value = command[1].lower()
         item = self.parse_item(command_value)
-        return self._complete_guess(item)
+        return guessing.complete_guess(self, item)
 
     def _song_command(self, command):
         if not self.state['running']:
@@ -359,47 +359,8 @@ class GuessingGame():
         if 'songsanity' in self.state['mode']:
             return None
         if len(command) > 1:
-            return self._complete_song_guess(command[1:])
+            return guessing.complete_song_guess(self, command[1:])
         return None
-
-    def _complete_guess(self, item):
-        if not self.state['running']:
-            self.logger.info('Guessing game not running')
-            return
-        if not item:
-            self.logger.info('Item %s not found', item)
-            return
-        expiration = datetime.now() - timedelta(minutes=15)
-        new_guess_deque = deque()
-        first_guess = False
-        for guess in self.guesses['item']:
-            if guess['timestamp'] < expiration:
-                continue
-            if guess['guess'] is not item:
-                new_guess_deque.append(guess)
-                continue
-            if not first_guess:
-                Streamer.objects.filter( #pylint: disable=no-member
-                    channel_id=self.state['database']['streamer'].channel_id,
-                    participants__user_id=guess['user-id']).update(
-                        inc__participants__S__session_points=
-                        self.state['database']['streamer'].first_bonus,
-                        inc__participants__S__total_points=
-                        self.state['database']['streamer'].first_bonus)
-                self.logger.info('User %s made the first correct guess earning %s extra points',
-                                 guess['username'], self.state['database']['streamer'].first_bonus)
-                first_guess = True
-            Streamer.objects.filter( #pylint: disable=no-member
-                channel_id=self.state['database']['streamer'].channel_id,
-                participants__user_id=guess['user-id']).modify(
-                    inc__participants__S__session_points=
-                    self.state['database']['streamer'].points,
-                    inc__participants__S__total_points=
-                    self.state['database']['streamer'].points)
-            self.logger.info('User %s guessed correctly and earned %s points',
-                             guess['username'], self.state['database']['streamer'].points)
-            self.guesses['item'] = new_guess_deque
-            self.logger.info('Guesses completed')
 
     def _do_points_check(self, username):
         try:
@@ -442,117 +403,6 @@ class GuessingGame():
                                     participant.total_points])
         bucket = amazon_s3.Bucket(os.environ('S3_BUCKET'))
         bucket.upload_file(file, str(datetime.now()) + '.csv', ExtraArgs={'ACL':'public-read'})
-
-    def _complete_medal_guess(self, command):
-        if len(command) < 2:
-            return None
-        if command[1] not in self.state['guessables']['dungeons']:
-            if not self.state['running'] and command[1] == 'free':
-                self.state['freebie'] = command[0]
-                self.logger.info('Medal %s set to freebie', command[0])
-            return None
-        if command[0] in self.state['guessables']['medals']:
-            if command[0] in self.state['medals']:
-                self.logger.info('Medal %s already in guesses')
-                if self.state['medals'][command[0]] != command[1]:
-                    self.state['medals'][command[0]] = command[1]
-                    self.logger.info('Medal %s set to dungeon %s', command[0], command[1])
-            self.state['medals'][command[0]] = command[1]
-            self.logger.info('Medal %s set to dungeon %s', command[0], command[1])
-        if ((self.state['freebie'] and len(self.state['medals']) == 5)
-                or len(self.state['medals']) == 6):
-            local_guesses = deque()
-            hiscore = 0
-            for guess in self.guesses['medal']:
-                count = 0
-                for final in self.state['medals']:
-                    if guess[final] == self.state['medals'][final]:
-                        count += 1
-                localguess = {
-                    "user-id": guess['user-id'], "username": guess['username'], "correct": count
-                    }
-                local_guesses.append(localguess)
-                if count > hiscore:
-                    hiscore = count
-            if hiscore < 1:
-                return None
-            for guesser in local_guesses:
-                if guesser['correct'] < hiscore:
-                    continue
-                try:
-                    streamer = Streamer.objects.get( #pylint: disable=no-member
-                        channel_id=self.state['database']['channel-id'],
-                        participants__user_id=guesser['user-id'])
-                except Streamer.DoesNotExist: #pylint: disable=no-member
-                    self.logger.error('Participant with ID %s does not exist in the database',
-                                      guesser['user-id'])
-                    return "User %s does not exist." % guesser['username']
-                for update_participant in streamer.participants:
-                    if update_participant.user_id == int(guesser['user-id']):
-                        update_participant.session_points += hiscore
-                        update_participant.total_points += hiscore
-                self.logger.info('User %s guessed correctly and earned %s points',
-                                 guesser['username'], hiscore)
-                streamer.save()
-                streamer.reload()
-                self.guesses['medal'] = deque()
-                self.logger.info('Medal guesses completed')
-        return None
-
-    def _complete_song_guess(self, command):
-        if len(command) < 2:
-            self.logger.info('Not enough arguments for song')
-            return None
-        new_song = self.parse_songs(command[0])
-        new_location = self.parse_songs(command[1])
-        if not new_song or not new_location:
-            return None
-        if new_song in self.state['guessables']['songs']:
-            if new_song in self.state['songs']:
-                self.logger.info('Song %s already in guesses')
-                if self.state['songs'][new_song] != new_location:
-                    self.state['songs'][new_song] = new_location
-                    self.logger.info('Song %s set to location %s', new_song, new_location)
-            self.state['songs'][new_song] = new_location
-            self.logger.info('Song %s set to location %s', new_song, new_location)
-        if len(self.state['songs']) == 12:
-            local_guesses = deque()
-            hiscore = 0
-            for guess in self.guesses['song']:
-                count = 0
-                for final in self.state['songs']:
-                    if self.parse_songs(guess[final]) == self.state['songs'][final]:
-                        count += 1
-                localguess = {
-                    "user-id": guess['user-id'], "username": guess['username'], "correct": count
-                    }
-                local_guesses.append(localguess)
-                if count > hiscore:
-                    hiscore = count
-            if hiscore < 1:
-                return None
-            for guesser in local_guesses:
-                if guesser['correct'] < hiscore:
-                    continue
-                try:
-                    streamer = Streamer.objects.get( #pylint: disable=no-member
-                        channel_id=self.state['database']['channel-id'],
-                        participants__user_id=guesser['user-id'])
-                except Streamer.DoesNotExist: #pylint: disable=no-member
-                    self.logger.error('Participant with ID %s does not exist in the database',
-                                      guesser['user-id'])
-                    return "User %s does not exist." % guesser['username']
-                for update_participant in streamer.participants:
-                    if update_participant.user_id == int(guesser['user-id']):
-                        update_participant.session_points += hiscore
-                        update_participant.total_points += hiscore
-                self.logger.info('User %s guessed correctly and earned %s points',
-                                 guesser['username'], hiscore)
-                streamer.save()
-                streamer.reload()
-                self.guesses['song'] = deque()
-                self.logger.info('Song guesses completed')
-        return None
 
     # Currently will assume !hud <item> is the Guess Completion command
     def _check_items_allowed(self, item):
