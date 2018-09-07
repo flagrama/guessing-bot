@@ -2,14 +2,15 @@
 import os.path
 import errno
 from datetime import datetime, timedelta
-from collections import deque, OrderedDict
+from collections import deque
 from functools import partial
 import csv
 
 import boto3
 import jstyleson
 
-from database import Streamer, Participant, Session, SessionLogEntry
+from database import Streamer, Participant, Session
+import guessing
 import whitelist_commands
 import settings
 
@@ -38,7 +39,7 @@ class GuessingGame():
                 },
                 {
                     "name": "songsanity",
-                    "items": None
+                    "items": []
                 },
                 {
                     "name": "egg",
@@ -138,7 +139,7 @@ class GuessingGame():
             if (command_name in self.commands['game_state_commands']
                     and (permissions['whitelist'] or permissions['mod'])
                     and not permissions['blacklist']):
-                return self.commands['game_state_commands'][command_name](command)
+                return self.commands['game_state_commands'][command_name](user)
         except IndexError:
             self.logger.error('Command missing arguments')
         return None
@@ -206,116 +207,6 @@ class GuessingGame():
                               username)
         return None
 
-    def _do_item_guess(self, user, item, participant):
-        if not item:
-            self.logger.info('Item %s not found', item)
-            return
-        self.guesses['item'] = self._remove_stale_guesses(self.guesses['item'], user['username'])
-        now = datetime.now()
-        item_guess = {
-            "timestamp": now,
-            "user-id": user['user-id'],
-            "username": user['username'],
-            "guess": item
-        }
-        print(participant)
-        guess = SessionLogEntry(
-            timestamp=datetime.now(),
-            participant=participant.user_id,
-            participant_name=participant.username,
-            guess_type="Item",
-            guess=item,
-            session_points=participant.session_points,
-            total_points=participant.total_points
-        )
-        self.state['database']['current-session'].guesses.append(guess)
-        self.guesses['item'].append(item_guess)
-        self.logger.info('%s Item %s guessed by user %s', now, item, user['username'])
-        self.logger.debug(self.guesses['item'])
-
-    def _do_medal_guess(self, user, medals, participant):
-        if len(medals) < 5 or len(medals) < 6 and not self.state['freebie']:
-            self.logger.info('Medal command incomplete')
-            self.logger.debug(medals)
-            return
-        self.guesses['medal'] = self._remove_stale_guesses(self.guesses['medal'], user['username'])
-        medal_guess = OrderedDict()
-        medal_guess["forest"] = None
-        medal_guess["fire"] = None
-        medal_guess["water"] = None
-        medal_guess["spirit"] = None
-        medal_guess["shadow"] = None
-        medal_guess["light"] = None
-        i = 0
-        for medal in medal_guess:
-            guess = medals[i]
-            if guess not in self.state['guessables']['dungeons'] and guess != 'free':
-                self.logger.info('Invalid medal %s', guess)
-                return
-            if medal == self.state['freebie'] or guess == 'free':
-                continue
-            medal_guess[medal] = guess
-            i += 1
-        guess = SessionLogEntry(
-            timestamp=datetime.now(),
-            participant=participant.user_id,
-            participant_name=participant.username,
-            guess_type="Medal",
-            guess=jstyleson.dumps(medal_guess).replace(',', '\n'),
-            session_points=participant.session_points,
-            total_points=participant.total_points
-        )
-        self.state['database']['current-session'].guesses.append(guess)
-        medal_guess['user-id'] = user['user-id']
-        medal_guess['username'] = user['username']
-        medal_guess['timestamp'] = datetime.now()
-        self.guesses['medal'].append(medal_guess)
-        self.logger.debug(medal_guess)
-
-    def _do_song_guess(self, user, songs, participant):
-        if len(songs) < 12:
-            self.logger.info('song command incomplete')
-            self.logger.debug(songs)
-            return
-        self.guesses['song'] = self._remove_stale_guesses(self.guesses['song'], user['username'])
-        song_guess = OrderedDict()
-        song_guess["Zelda's Lullaby"] = None
-        song_guess["Epona's Song"] = None
-        song_guess["Saria's Song"] = None
-        song_guess["Sun's Song"] = None
-        song_guess["Song of Time"] = None
-        song_guess["Song of Storms"] = None
-        song_guess["Minuet of Forest"] = None
-        song_guess["Bolero of Fire"] = None
-        song_guess["Serenade of Water"] = None
-        song_guess["Requiem of Spirit"] = None
-        song_guess["Nocturne of Shadow"] = None
-        song_guess["Prelude of Light"] = None
-        i = 0
-        for song in song_guess:
-            guess = songs[i]
-            songname = self.parse_songs(guess)
-            if not songname:
-                self.logger.info('Invalid song %s', guess)
-                return
-            song_guess[song] = songname
-            i += 1
-        guess = SessionLogEntry(
-            timestamp=datetime.now(),
-            participant=participant.user_id,
-            participant_name=participant.username,
-            guess_type="Song",
-            guess=jstyleson.dumps(song_guess).replace(',', '\n'),
-            session_points=participant.session_points,
-            total_points=participant.total_points
-        )
-        self.state['database']['current-session'].guesses.append(guess)
-        song_guess['user-id'] = user['user-id']
-        song_guess['username'] = user['username']
-        song_guess['timestamp'] = datetime.now()
-        self.guesses['song'].append(song_guess)
-        self.logger.debug(song_guess)
-
     def _guesspoints_command(self, command):
         try:
             command_value = command[1]
@@ -381,14 +272,32 @@ class GuessingGame():
             subcommand_name = command[1]
             command_value = command[2:]
             if subcommand_name == 'medal':
-                return self._do_medal_guess(user, command_value, guesser)
+                options = {
+                    "freebie": self.state['freebie'],
+                    "dungeons": self.state['guessables']['dungeons']
+                }
+                guess, session = guessing.do_medal_guess(
+                    user, command_value, guesser, self.guesses['medal'], options)
+                if guess:
+                    self.guesses['medal'] = guess
+                    self.state['database']['current-session'].guesses.append(session)
+                return
             if subcommand_name == 'song':
-                return self._do_song_guess(user, command_value, guesser)
+                guess, session = guessing.do_song_guess(
+                    user, command_value, guesser, self.guesses['song'])
+                if guess:
+                    self.guesses['song'] = guess
+                    self.state['database']['current-session'].guesses.append(session)
+                return
         if not self.state['running']:
-            return None
+            return
         command_value = command[1].lower()
         item = self.parse_item(command_value)
-        return self._do_item_guess(user, item, guesser)
+        guess, session = guessing.do_item_guess(
+            user, item, guesser, self.guesses['item'])
+        if guess:
+            self.guesses['item'] = guess
+            self.state['database']['current-session'].guesses.append(session)
 
     def _points_command(self, command, user):
         if len(command) == 1:
@@ -414,7 +323,6 @@ class GuessingGame():
         mode = command[1]
         if mode == 'normal':
             message = 'Mode reset to normal by %s' % user['username']
-            print(message)
             self.state['mode'].clear()
             self.logger.info(message)
             return message
@@ -475,7 +383,7 @@ class GuessingGame():
                 return whitelist_commands.do_whitelist_command(
                     command,
                     self.state['database']['streamer'],
-                    self.state['database']['channel_id']
+                    self.state['database']['channel-id']
                     )
             if subcommand_name in self.state['guessables']['medals']:
                 return self._complete_medal_guess(command[1:])
@@ -578,7 +486,7 @@ class GuessingGame():
             for guess in self.guesses['song']:
                 count = 0
                 for final in self.state['songs']:
-                    if guess[final] == self.state['songs'][final]:
+                    if self.parse_songs(guess[final]) == self.state['songs'][final]:
                         count += 1
                 localguess = {
                     "user-id": guess['user-id'], "username": guess['username'], "correct": count
@@ -670,18 +578,6 @@ class GuessingGame():
             if modes['name'] not in self.state['mode'] and item in modes['items']:
                 return False
         return True
-
-    @staticmethod
-    def _remove_stale_guesses(guess_queue, username):
-        new_queue = deque()
-        expiration = datetime.now() - timedelta(minutes=15)
-        for guess in guess_queue:
-            if guess['timestamp'] < expiration:
-                continue
-            if guess['username'] == username:
-                continue
-            new_queue.append(guess)
-        return new_queue
 
     # Integrate with the database in the future
     def parse_songs(self, songcode):
