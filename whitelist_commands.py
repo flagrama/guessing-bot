@@ -15,7 +15,7 @@ def _get_username_from_command(command):
     except IndexError:
         return False
 
-def _add_user_to_whitelist(command, streamer, channel_id):
+def _add_whitelist_command(command, streamer, channel_id):
     message = 'Unable to add user to whitelist'
     username = _get_username_from_command(command)
 
@@ -45,10 +45,10 @@ def _add_user_to_whitelist(command, streamer, channel_id):
         return message
     except mongoengine.NotUniqueError:
         LOGGER.error('User with ID %s already exists in the database', new_user_id)
-    return message
+        return message
 
 
-def _remove_user_from_whitelist(command, streamer, channel_id):
+def _remove_whitelist_command(command, streamer, channel_id):
     message = 'Unable to remove user from whitelist'
     username = _get_username_from_command(command)
 
@@ -77,7 +77,7 @@ def _remove_user_from_whitelist(command, streamer, channel_id):
         return message
 
 
-def _add_user_to_blacklist(command, streamer, channel_id):
+def _add_blacklist_command(command, streamer, channel_id):
     message = 'Unable to add user to whitelist'
     username = _get_username_from_command(command)
 
@@ -108,10 +108,10 @@ def _add_user_to_blacklist(command, streamer, channel_id):
         return message
     except mongoengine.NotUniqueError:
         LOGGER.error('User with ID %s already exists in the database', new_user_id)
-    return message
+        return message
 
 
-def _remove_user_from_blacklist(command, streamer, channel_id):
+def _remove_blacklist_command(command, streamer, channel_id):
     message = 'Unable to remove user from blacklist'
     username = _get_username_from_command(command)
 
@@ -142,15 +142,15 @@ def _remove_user_from_blacklist(command, streamer, channel_id):
 def do_whitelist_command(command, streamer, channel_id):
     """Calls the command function the user invokes."""
     commands = {
-        "add": partial(_add_user_to_whitelist),
-        "remove": partial(_remove_user_from_whitelist),
-        "ban": partial(_add_user_to_blacklist),
-        "unban": partial(_remove_user_from_blacklist)
+        "add": partial(_add_whitelist_command),
+        "remove": partial(_remove_whitelist_command),
+        "ban": partial(_add_blacklist_command),
+        "unban": partial(_remove_blacklist_command)
     }
     try:
-        command_name = command[0]
+        command_name = command[1]
         if command_name in commands:
-            return command[command_name](command, streamer, channel_id)
+            return commands[command_name](command, streamer, channel_id)
     except IndexError:
         LOGGER.error('Command missing arguments')
         return None
