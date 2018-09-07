@@ -8,10 +8,9 @@ import csv
 
 import boto3
 import jstyleson
-import mongoengine
 
-from database import Streamer, Participant, WhitelistUser, BlacklistUser, Session, SessionLogEntry
-import twitch
+from database import Streamer, Participant, Session, SessionLogEntry
+import whitelist_commands
 import settings
 
 class GuessingGame():
@@ -473,7 +472,11 @@ class GuessingGame():
         if len(command) > 1:
             subcommand_name = command[1]
             if subcommand_name in self.commands['whitelist']:
-                return self._do_whitelist_command(command)
+                return whitelist_commands.do_whitelist_command(
+                    command,
+                    self.state['database']['streamer'],
+                    self.state['database']['channel_id']
+                    )
             if subcommand_name in self.state['guessables']['medals']:
                 return self._complete_medal_guess(command[1:])
         if not self.state['running']:
@@ -660,157 +663,6 @@ class GuessingGame():
         return message
 
     # Currently will assume !hud <item> is the Guess Completion command
-    def _do_whitelist_command(self, command):
-        commands = {
-            "add": partial(self._add_user_to_whitelist),
-            "remove": partial(self._remove_user_from_whitelist),
-            "ban": partial(self._add_user_to_blacklist),
-            "unban": partial(self._remove_user_from_blacklist)
-        }
-        try:
-            command_name = command[0]
-            if command_name in commands:
-                return command[command_name](command)
-        except IndexError:
-            self.logger.error('Command missing arguments')
-            return None
-        except KeyError:
-            self.logger.error('Command missing')
-            return None
-        return None
-
-    @staticmethod
-    def _get_username_from_command(command):
-        try:
-            username = command[2]
-            return username
-        except IndexError:
-            return False
-
-    def _add_user_to_whitelist(self, command):
-        message = 'Unable to add user to whitelist'
-        username = self._get_username_from_command(command)
-
-        if not username:
-            self.logger.error('Username not provided')
-            return message
-
-        new_user_id = twitch.get_user_id(username)
-        if not new_user_id:
-            return message
-
-        new_user = WhitelistUser(username=username, user_id=new_user_id)
-        try:
-            streamer = Streamer.objects.get(channel_id=self.state['database']['channel-id'], #pylint: disable=no-member
-                                            whitelist__user_id=new_user_id)
-            if streamer.whitelist:
-                self.logger.info('User with ID %s already exists in the database', new_user_id)
-                return message
-        except Streamer.DoesNotExist: #pylint: disable=no-member
-            self.logger.error('User with ID %s does not exist in the database', new_user_id)
-        try:
-            self.state['database']['streamer'].whitelist.append(new_user)
-            self.state['database']['streamer'].save()
-            self.state['database']['streamer'].reload()
-            message = 'User %s added to whitelist' % command[2]
-            self.logger.info(message)
-            return message
-        except mongoengine.NotUniqueError:
-            self.logger.error('User with ID %s already exists in the database', new_user_id)
-        return message
-
-
-    def _remove_user_from_whitelist(self, command):
-        message = 'Unable to remove user from whitelist'
-        username = self._get_username_from_command(command)
-
-        if not username:
-            self.logger.error('Username not provided')
-            return message
-
-        existing_user_id = twitch.get_user_id(username)
-        if not existing_user_id:
-            return message
-
-        try:
-            streamer = Streamer.objects.get(channel_id=self.state['database']['channel-id'], #pylint: disable=no-member
-                                            whitelist__user_id=existing_user_id)
-            if not streamer.whitelist:
-                return message
-            Streamer.objects.update(channel_id=self.state['database']['channel-id'], #pylint: disable=no-member
-                                    pull__whitelist__user_id=existing_user_id)
-            self.state['database']['streamer'].save()
-            self.state['database']['streamer'].reload()
-            message = 'User %s removed from whitelist' % command[2]
-            self.logger.info(message)
-            return message
-        except Streamer.DoesNotExist: #pylint: disable=no-member
-            self.logger.error('User with ID %s does not exist in the database', existing_user_id)
-            return message
-
-
-    def _add_user_to_blacklist(self, command):
-        message = 'Unable to add user to whitelist'
-        username = self._get_username_from_command(command)
-
-        if not username:
-            self.logger.error('Username not provided')
-            return message
-
-        new_user_id = twitch.get_user_id(username)
-        if not new_user_id:
-            return message
-
-        new_user = BlacklistUser(username=username, user_id=new_user_id)
-        try:
-            streamer = Streamer.objects.get(channel_id=self.state['database']['streamer'], #pylint: disable=no-member
-                                            blacklist__user_id=new_user_id)
-            if streamer.blacklist:
-                self.logger.info('User with ID %s already exists in the database', new_user_id)
-                return message
-        except Streamer.DoesNotExist: #pylint: disable=no-member
-            self.logger.error('User with ID %s does not exist in the database', new_user_id)
-
-        try:
-            self.state['database']['streamer'].blacklist.append(new_user)
-            self.state['database']['streamer'].save()
-            self.state['database']['streamer'].reload()
-            message = 'User %s added to blacklist' % command[2]
-            self.logger.info(message)
-            return message
-        except mongoengine.NotUniqueError:
-            self.logger.error('User with ID %s already exists in the database', new_user_id)
-        return message
-
-
-    def _remove_user_from_blacklist(self, command):
-        message = 'Unable to remove user from blacklist'
-        username = self._get_username_from_command(command)
-
-        if not username:
-            self.logger.error('Username not provided')
-            return message
-
-        existing_user_id = twitch.get_user_id(username)
-        if not existing_user_id:
-            return message
-
-        try:
-            streamer = Streamer.objects.get(channel_id=self.state['database']['channel-id'], #pylint: disable=no-member
-                                            blacklist__user_id=existing_user_id)
-            if not streamer.whitelist:
-                return message
-            Streamer.objects.update(channel_id=self.state['database']['channel-id'], #pylint: disable=no-member
-                                    pull__blacklist__user_id=existing_user_id)
-            self.state['database']['streamer'].save()
-            self.state['database']['streamer'].reload()
-            message = 'User %s removed from blacklist' % command[2]
-            self.logger.info(message)
-            return message
-        except Streamer.DoesNotExist: #pylint: disable=no-member
-            self.logger.error('User with ID %s does not exist in the database', existing_user_id)
-            return message
-
     def _check_items_allowed(self, item):
         if any(skip in item for skip in self.state['guessables']['blacklist']):
             return False
