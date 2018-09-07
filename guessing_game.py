@@ -260,32 +260,16 @@ class GuessingGame():
             subcommand_name = command[1]
             command_value = command[2:]
             if subcommand_name == 'medal':
-                options = {
-                    "freebie": self.state['freebie'],
-                    "dungeons": self.state['guessables']['dungeons']
-                }
-                guess, session = guessing.do_medal_guess(
-                    user, command_value, guesser, self.guesses['medal'], options)
-                if guess:
-                    self.guesses['medal'] = guess
-                    self.state['database']['current-session'].guesses.append(session)
+                guessing.do_medal_guess(user, command_value, guesser, self)
                 return
             if subcommand_name == 'song':
-                guess, session = guessing.do_song_guess(
-                    user, command_value, guesser, self.guesses['song'])
-                if guess:
-                    self.guesses['song'] = guess
-                    self.state['database']['current-session'].guesses.append(session)
+                guessing.do_song_guess(user, command_value, guesser, self)
                 return
         if not self.state['running']:
             return
         command_value = command[1].lower()
         item = self.parse_item(command_value)
-        guess, session = guessing.do_item_guess(
-            user, item, guesser, self.guesses['item'])
-        if guess:
-            self.guesses['item'] = guess
-            self.state['database']['current-session'].guesses.append(session)
+        guessing.do_item_guess(user, item, guesser, self)
 
     def _points_command(self, command, user):
         if len(command) == 1:
