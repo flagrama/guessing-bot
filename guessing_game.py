@@ -144,68 +144,56 @@ class GuessingGame():
             self.logger.error('Command missing arguments')
         return None
 
-    def _complete_guess(self, item):
+    def _start_command(self, user):
+        if self.state['running']:
+            self.logger.info('Guessing game already running')
+            return None
+        self.state['running'] = True
+        message = 'Guessing game started by %s' % user['username']
+        self.logger.info(message)
+        return message
+
+    def _finish_command(self, user):
         if not self.state['running']:
             self.logger.info('Guessing game not running')
-            return
-        if not item:
-            self.logger.info('Item %s not found', item)
-            return
-        expiration = datetime.now() - timedelta(minutes=15)
-        new_guess_deque = deque()
-        first_guess = False
-        for guess in self.guesses['item']:
-            if guess['timestamp'] < expiration:
-                continue
-            if guess['guess'] is not item:
-                new_guess_deque.append(guess)
-                continue
-            if not first_guess:
-                Streamer.objects.filter( #pylint: disable=no-member
-                    channel_id=self.state['database']['streamer'].channel_id,
-                    participants__user_id=guess['user-id']).update(
-                        inc__participants__S__session_points=
-                        self.state['database']['streamer'].first_bonus,
-                        inc__participants__S__total_points=
-                        self.state['database']['streamer'].first_bonus)
-                self.logger.info('User %s made the first correct guess earning %s extra points',
-                                 guess['username'], self.state['database']['streamer'].first_bonus)
-                first_guess = True
-            Streamer.objects.filter( #pylint: disable=no-member
-                channel_id=self.state['database']['streamer'].channel_id,
-                participants__user_id=guess['user-id']).modify(
-                    inc__participants__S__session_points=
-                    self.state['database']['streamer'].points,
-                    inc__participants__S__total_points=
-                    self.state['database']['streamer'].points)
-            self.logger.info('User %s guessed correctly and earned %s points',
-                             guess['username'], self.state['database']['streamer'].points)
-            self.guesses['item'] = new_guess_deque
-            self.logger.info('Guesses completed')
-
-    def _do_points_check(self, username):
-        try:
-            streamer = Streamer.objects.get( #pylint: disable=no-member
-                channel_id=self.state['database']['channel-id'], participants__username=username)
-            for participant in streamer.participants:
-                if participant.username == username:
-                    return '%s has %s points' % (username, participant.session_points)
-        except Streamer.DoesNotExist: #pylint: disable=no-member
-            self.logger.error('Participant with username %s does not exist in the database',
-                              username)
-        return None
-
-    def _do_total_points_check(self, username):
-        try:
-            streamer = Streamer.objects.get( #pylint: disable=no-member
-                channel_id=self.state['database']['channel-id'], participants__username=username)
-            for participant in streamer.participants:
-                if participant.username == username:
-                    return '%s has %s points' % (username, participant.total_points)
-        except Streamer.DoesNotExist: #pylint: disable=no-member
-            self.logger.error('Participant with username %s does not exist in the database',
-                              username)
-        return None
+            return None
+        self.guesses['item'] = deque()
+        self.guesses['medal'] = deque()
+        self.guesses['song'] = deque()
+        self.state['running'] = False
+        self.state['freebie'] = None
+        self.state['mode'].clear()
+        self.state['songs'].clear()
+        self.state['medals'].clear()
+        self.state['database']['streamer'].sessions.append(
+            self.state['database']['current-session'])
+        self.state['database']['streamer'].save()
+        self.state['database']['streamer'].reload()
+        self.state['database']['latest-session'] = self.state['database']['current-session']
+        self.state['database']['current-session'] = Session()
+        for participant in self.state['database']['streamer'].participants:
+            participant.session_points = 0
+        self.state['database']['streamer'].save()
+        self.state['database']['streamer'].reload()
+        filename = str(datetime.now()).replace(':', '_')
+        file = os.path.join(os.path.curdir, 'reports', filename + '.csv')
+        amazon_s3 = boto3.resource('s3')
+        if not os.path.exists(file):
+            try:
+                os.makedirs(os.path.dirname(file))
+            except OSError as exc:
+                if exc.errno != errno.EEXIST:
+                    raise
+        report_writer = csv.writer(open(file, 'w', newline=''))
+        for guess in self.state['database']['latest-session'].guesses:
+            report_writer.writerow([guess.timestamp, guess.participant, guess.participant_name,
+                                    guess.guess_type, guess.guess, guess.session_points,
+                                    guess.total_points])
+        bucket = amazon_s3.Bucket(os.environ['S3_BUCKET'])
+        bucket.upload_file(file, str(datetime.now()) + '.csv', ExtraArgs={'ACL':'public-read'})
+        message = 'Guessing game ended by %s' % user['username']
+        self.logger.info(message)
+        return message
 
     def _guesspoints_command(self, command):
         try:
@@ -357,24 +345,6 @@ class GuessingGame():
                 return None
         return None
 
-    def _report_totals(self):
-        amazon_s3 = boto3.resource('s3')
-        filename = str(datetime.now()).replace(':', '_')
-        file = os.path.join(os.path.curdir, 'reports', filename + ' totals' + '.csv')
-        if not os.path.exists(file):
-            try:
-                os.makedirs(os.path.dirname(file))
-            except OSError as exc:
-                if exc.errno != errno.EEXIST:
-                    raise
-        report_writer = csv.writer(
-            open(file, 'w', newline=''))
-        for participant in self.state['database']['streamer'].participants:
-            report_writer.writerow([participant.user_id, participant.username,
-                                    participant.total_points])
-        bucket = amazon_s3.Bucket(os.environ('S3_BUCKET'))
-        bucket.upload_file(file, str(datetime.now()) + '.csv', ExtraArgs={'ACL':'public-read'})
-
     # TODO: Fix this mess for setting the freebie medal
     def _hud_command(self, command):
         if len(command) > 1:
@@ -407,6 +377,87 @@ class GuessingGame():
         if len(command) > 1:
             return self._complete_song_guess(command[1:])
         return None
+
+    def _complete_guess(self, item):
+        if not self.state['running']:
+            self.logger.info('Guessing game not running')
+            return
+        if not item:
+            self.logger.info('Item %s not found', item)
+            return
+        expiration = datetime.now() - timedelta(minutes=15)
+        new_guess_deque = deque()
+        first_guess = False
+        for guess in self.guesses['item']:
+            if guess['timestamp'] < expiration:
+                continue
+            if guess['guess'] is not item:
+                new_guess_deque.append(guess)
+                continue
+            if not first_guess:
+                Streamer.objects.filter( #pylint: disable=no-member
+                    channel_id=self.state['database']['streamer'].channel_id,
+                    participants__user_id=guess['user-id']).update(
+                        inc__participants__S__session_points=
+                        self.state['database']['streamer'].first_bonus,
+                        inc__participants__S__total_points=
+                        self.state['database']['streamer'].first_bonus)
+                self.logger.info('User %s made the first correct guess earning %s extra points',
+                                 guess['username'], self.state['database']['streamer'].first_bonus)
+                first_guess = True
+            Streamer.objects.filter( #pylint: disable=no-member
+                channel_id=self.state['database']['streamer'].channel_id,
+                participants__user_id=guess['user-id']).modify(
+                    inc__participants__S__session_points=
+                    self.state['database']['streamer'].points,
+                    inc__participants__S__total_points=
+                    self.state['database']['streamer'].points)
+            self.logger.info('User %s guessed correctly and earned %s points',
+                             guess['username'], self.state['database']['streamer'].points)
+            self.guesses['item'] = new_guess_deque
+            self.logger.info('Guesses completed')
+
+    def _do_points_check(self, username):
+        try:
+            streamer = Streamer.objects.get( #pylint: disable=no-member
+                channel_id=self.state['database']['channel-id'], participants__username=username)
+            for participant in streamer.participants:
+                if participant.username == username:
+                    return '%s has %s points' % (username, participant.session_points)
+        except Streamer.DoesNotExist: #pylint: disable=no-member
+            self.logger.error('Participant with username %s does not exist in the database',
+                              username)
+        return None
+
+    def _do_total_points_check(self, username):
+        try:
+            streamer = Streamer.objects.get( #pylint: disable=no-member
+                channel_id=self.state['database']['channel-id'], participants__username=username)
+            for participant in streamer.participants:
+                if participant.username == username:
+                    return '%s has %s points' % (username, participant.total_points)
+        except Streamer.DoesNotExist: #pylint: disable=no-member
+            self.logger.error('Participant with username %s does not exist in the database',
+                              username)
+        return None
+
+    def _report_totals(self):
+        amazon_s3 = boto3.resource('s3')
+        filename = str(datetime.now()).replace(':', '_')
+        file = os.path.join(os.path.curdir, 'reports', filename + ' totals' + '.csv')
+        if not os.path.exists(file):
+            try:
+                os.makedirs(os.path.dirname(file))
+            except OSError as exc:
+                if exc.errno != errno.EEXIST:
+                    raise
+        report_writer = csv.writer(
+            open(file, 'w', newline=''))
+        for participant in self.state['database']['streamer'].participants:
+            report_writer.writerow([participant.user_id, participant.username,
+                                    participant.total_points])
+        bucket = amazon_s3.Bucket(os.environ('S3_BUCKET'))
+        bucket.upload_file(file, str(datetime.now()) + '.csv', ExtraArgs={'ACL':'public-read'})
 
     def _complete_medal_guess(self, command):
         if len(command) < 2:
@@ -518,57 +569,6 @@ class GuessingGame():
                 self.guesses['song'] = deque()
                 self.logger.info('Song guesses completed')
         return None
-
-    def _start_command(self, user):
-        if self.state['running']:
-            self.logger.info('Guessing game already running')
-            return None
-        self.state['running'] = True
-        message = 'Guessing game started by %s' % user['username']
-        self.logger.info(message)
-        return message
-
-    def _finish_command(self, user):
-        if not self.state['running']:
-            self.logger.info('Guessing game not running')
-            return None
-        self.guesses['item'] = deque()
-        self.guesses['medal'] = deque()
-        self.guesses['song'] = deque()
-        self.state['running'] = False
-        self.state['freebie'] = None
-        self.state['mode'].clear()
-        self.state['songs'].clear()
-        self.state['medals'].clear()
-        self.state['database']['streamer'].sessions.append(
-            self.state['database']['current-session'])
-        self.state['database']['streamer'].save()
-        self.state['database']['streamer'].reload()
-        self.state['database']['latest-session'] = self.state['database']['current-session']
-        self.state['database']['current-session'] = Session()
-        for participant in self.state['database']['streamer'].participants:
-            participant.session_points = 0
-        self.state['database']['streamer'].save()
-        self.state['database']['streamer'].reload()
-        filename = str(datetime.now()).replace(':', '_')
-        file = os.path.join(os.path.curdir, 'reports', filename + '.csv')
-        amazon_s3 = boto3.resource('s3')
-        if not os.path.exists(file):
-            try:
-                os.makedirs(os.path.dirname(file))
-            except OSError as exc:
-                if exc.errno != errno.EEXIST:
-                    raise
-        report_writer = csv.writer(open(file, 'w', newline=''))
-        for guess in self.state['database']['latest-session'].guesses:
-            report_writer.writerow([guess.timestamp, guess.participant, guess.participant_name,
-                                    guess.guess_type, guess.guess, guess.session_points,
-                                    guess.total_points])
-        bucket = amazon_s3.Bucket(os.environ['S3_BUCKET'])
-        bucket.upload_file(file, str(datetime.now()) + '.csv', ExtraArgs={'ACL':'public-read'})
-        message = 'Guessing game ended by %s' % user['username']
-        self.logger.info(message)
-        return message
 
     # Currently will assume !hud <item> is the Guess Completion command
     def _check_items_allowed(self, item):
