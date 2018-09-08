@@ -9,18 +9,19 @@ import csv
 import boto3
 import jstyleson
 
-from database import Streamer, Participant, Session
+from database import Streamer, Session, Participant
+from mode import Mode
+from guessable import Guessable
+import game
 import guessing
 import whitelist_commands
 import settings
 
-class GuessingGame():
+class GuessingGameBot():
     """This is a class for running a guessing game."""
     def __init__(self, streamer):
         """The constructor for GuessingGame class."""
         self.logger = settings.init_logger(__name__)
-        with open('items.json') as items:
-            self.items = jstyleson.load(items)
         self.guesses = {
             "item": deque(),
             "medal": deque(),
@@ -32,29 +33,8 @@ class GuessingGame():
             "mode": [],
             "songs": {},
             "medals": {},
-            "modes": [
-                {
-                    "name": "keysanity",
-                    "items": ["Boss Key"]
-                },
-                {
-                    "name": "songsanity",
-                    "items": []
-                },
-                {
-                    "name": "egg",
-                    "items": ["Child Trade"]
-                },
-                {
-                    "name": "ocarina",
-                    "items": ["Ocarina"]
-                }
-            ],
+            "modes": [],
             "guessables": {
-                "blacklist": [
-                    'Keys', 'Treasures', 'Skulls', 'Tokens', 'Prize', 'Label', 'Badge',
-                    'Heart Container', 'Pieces'
-                ],
                 "medals": [
                     'forest', 'fire', 'water', 'shadow', 'spirit', 'light'
                 ],
@@ -75,14 +55,24 @@ class GuessingGame():
                 "latest-session": None
             }
         }
-        for mode in self.state['modes']:
-            if mode['name'] == 'songsaniyt':
-                mode['items'] = self.state['guessables']['songs']
+# TODO: Grab from database instead of hardcoding
+        self.state['modes'] += [Mode('keysanity', 'Boss Key')]
+        self.state['modes'] += [Mode('egg', 'Child Trade')]
+        self.state['modes'] += [Mode('ocarina', 'Ocarina')]
+        blacklist = [
+            'Keys', 'Treasures', 'Skulls', 'Tokens', 'Prize', 'Label', 'Badge',
+            'Heart Container', 'Pieces'
+        ]
+        self.state['guessables']['dungeons'] += [
+            medal for medal in self.state['guessables']['medals'] if medal != 'light']
+        self.guessables = Guessable(*blacklist, modes=self.state['modes'], extra=self.state['guessables'])
+        self.guessables.modes += [Mode('songsanity', *getattr(self.guessables, 'songs'))]
+# End Region
         self.commands = {
             "whitelist": ['add', 'remove', 'ban', 'unban'],
             "game_commands": {
-                '!guess': partial(self._guess_command),
-                '!points': partial(self._points_command),
+                '!guess': partial(self.guess_command),
+                '!points': partial(self.points_command),
             },
             "config_commands": {
                 '!guesspoints': partial(self._guesspoints_command),
@@ -100,8 +90,6 @@ class GuessingGame():
                 '!finish': partial(self._finish_command)
             }
         }
-        self.state['guessables']['dungeons'] += [
-            medal for medal in self.state['guessables']['medals'] if medal != 'light']
         self.state['database']['latest-session'] = self._get_sessions()
 
     def _get_sessions(self):
@@ -127,7 +115,7 @@ class GuessingGame():
         try:
             command_name = command[0]
             if command_name in self.commands['game_commands']:
-                return self.commands['game_commands'][command_name](command, user)
+                return self.commands['game_commands'][command_name](self, command, user)
             if (command_name in self.commands['config_commands']
                     and (permissions['whitelist'] or permissions['mod'])
                     and not permissions['blacklist']):
@@ -229,11 +217,11 @@ class GuessingGame():
             self.logger.error(message)
             return message
 
-    def _guess_command(self, command, user):
+    def guess_command(self, guessing_game, command, user):
         guesser = None
         try:
             streamer = Streamer.objects.get( #pylint: disable=no-member
-                channel_id=self.state['database']['channel-id'],
+                channel_id=guessing_game.state['database']['channel-id'],
                 participants__user_id=user['user-id'])
             for participant in streamer.participants:
                 if participant.user_id == int(user['user-id']):
@@ -244,44 +232,45 @@ class GuessingGame():
                 user_id=user['user-id'],
                 session_points=0,
                 total_points=0)
-            self.state['database']['streamer'].participants.append(participant)
-            self.state['database']['streamer'].save()
-            self.state['database']['streamer'].reload()
+            guessing_game.state['database']['streamer'].participants.append(participant)
+            guessing_game.state['database']['streamer'].save()
+            guessing_game.state['database']['streamer'].reload()
             streamer = Streamer.objects.get( #pylint: disable=no-member
-                channel_id=self.state['database']['channel-id'],
+                channel_id=guessing_game.state['database']['channel-id'],
                 participants__user_id=user['user-id'])
             for participant in streamer.participants:
                 if participant.user_id == int(user['user-id']):
                     guesser = participant
-            self.logger.error(
+            guessing_game.logger.error(
                 'Participant with ID %s does not exist in the database. Creating participant.',
                 user['user-id'])
         if len(command) > 2:
             subcommand_name = command[1]
             command_value = command[2:]
             if subcommand_name == 'medal':
-                guessing.do_medal_guess(user, command_value, guesser, self)
+                guessing.do_medal_guess(user, command_value, guesser, guessing_game)
                 return
             if subcommand_name == 'song':
-                guessing.do_song_guess(user, command_value, guesser, self)
+                guessing.do_song_guess(user, command_value, guesser, guessing_game)
                 return
-        if not self.state['running']:
+        if not guessing_game.state['running']:
             return
         command_value = command[1].lower()
-        item = self.parse_item(command_value)
-        guessing.do_item_guess(user, item, guesser, self)
+        item = self.guessables.parse_item(command_value, self.state['mode'])
+        guessing.do_item_guess(user, item, guesser, guessing_game)
 
-    def _points_command(self, command, user):
+    @staticmethod
+    def points_command(guessing_game, command, user):
         if len(command) == 1:
-            return self._do_points_check(user['username'])
+            return guessing_game.points_check(user['username'])
         if len(command) == 2:
             if command[1] == 'total':
-                return self._do_total_points_check(user['username'])
-            return self._do_points_check(command[1])
+                return guessing_game.total_points_check(user['username'])
+            return guessing_game.points_check(command[1])
         if len(command) == 3:
             if command[2] != 'total':
                 return None
-            return self._do_total_points_check(command[1])
+            return guessing_game.total_points_check(command[1])
         return None
 
     def _mode_command(self, command, user):
@@ -299,7 +288,7 @@ class GuessingGame():
             self.logger.info(message)
             return message
         for modes in self.state['modes']:
-            if mode in modes['name'] and mode not in self.state['mode']:
+            if mode == modes.name and mode not in self.state['mode']:
                 message = 'Mode %s added by %s' % (mode, user['username'])
                 self.state['mode'] += [mode]
                 self.logger.info(message)
@@ -339,17 +328,17 @@ class GuessingGame():
                     self.state['database']['streamer'],
                     self.state['database']['channel-id']
                     )
-            if subcommand_name in self.state['guessables']['medals']:
+            if subcommand_name in self.guessables.medals:
                 return guessing.complete_medal_guess(self, command[1:])
         if not self.state['running']:
             self.logger.info('Guessing game not running')
             return None
         if len(command) > 1:
             subcommand_name = command[1]
-            if subcommand_name in self.state['guessables']['medals']:
+            if subcommand_name in self.guessables.medals:
                 return guessing.complete_medal_guess(self, command[1:])
         command_value = command[1].lower()
-        item = self.parse_item(command_value)
+        item = self.guessables.parse_item(command_value, self.state['mode'])
         return guessing.complete_guess(self, item)
 
     def _song_command(self, command):
@@ -362,7 +351,7 @@ class GuessingGame():
             return guessing.complete_song_guess(self, command[1:])
         return None
 
-    def _do_points_check(self, username):
+    def points_check(self, username):
         try:
             streamer = Streamer.objects.get( #pylint: disable=no-member
                 channel_id=self.state['database']['channel-id'], participants__username=username)
@@ -374,7 +363,7 @@ class GuessingGame():
                               username)
         return None
 
-    def _do_total_points_check(self, username):
+    def total_points_check(self, username):
         try:
             streamer = Streamer.objects.get( #pylint: disable=no-member
                 channel_id=self.state['database']['channel-id'], participants__username=username)
@@ -405,20 +394,13 @@ class GuessingGame():
         bucket.upload_file(file, str(datetime.now()) + '.csv', ExtraArgs={'ACL':'public-read'})
 
     # Currently will assume !hud <item> is the Guess Completion command
-    def _check_items_allowed(self, item):
-        if any(skip in item for skip in self.state['guessables']['blacklist']):
-            return False
-        for modes in self.state['modes']:
-            if modes['name'] not in self.state['mode'] and item in modes['items']:
-                return False
-        return True
 
     # Integrate with the database in the future
     def parse_songs(self, songcode):
         """Searches for a song with the value of songcode in its codes entry."""
-        for item in self.items:
+        for item in self.guessables.items:
             if 'name' in item:
-                if not item['name'] in self.state['guessables']['songs']:
+                if not item['name'] in self.guessables.songs:
                     continue
             if 'stages' in item:
                 codes = []
@@ -429,27 +411,5 @@ class GuessingGame():
                         for code in stage['codes'].split(','):
                             codes += [code.strip()]
                 if songcode in codes:
-                    return item['name']
-        return None
-
-    def parse_item(self, guess):
-        """Searches for a item with the value of guess in its codes entry."""
-        for item in self.items:
-            if 'name' in item:
-                if not self._check_items_allowed(item['name']):
-                    continue
-            if 'codes' in item:
-                for code in item['codes'].split(','):
-                    if guess in [code.strip()]:
-                        return item['name']
-            elif 'stages' in item:
-                codes = []
-                for stage in item['stages']:
-                    if 'codes' in stage:
-                        if any(code in stage['codes'].split(',') for code in codes):
-                            continue
-                        for code in stage['codes'].split(','):
-                            codes += [code.strip()]
-                if guess in codes:
                     return item['name']
         return None

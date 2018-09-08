@@ -16,7 +16,7 @@ def main():
         client = bot.TwitchBot()
         client.start()
     except KeyboardInterrupt:
-        print('\n')
+        print('')
         logger.info('SIGINT recieved. Terminating.')
 
 if __name__ == "__main__":
