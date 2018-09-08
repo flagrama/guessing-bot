@@ -44,8 +44,9 @@ class Guessable():
         if any(skip in item for skip in self.blacklist):
             return False
         for mode in self.modes:
-            if mode.name not in modes and item in mode.items:
-                return False
+            for items in mode.items:
+                if items in item and mode.name not in modes:
+                    return False
         return True
 
     def parse_item(self, guess):
