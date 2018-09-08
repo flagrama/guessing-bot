@@ -6,7 +6,7 @@ import mongoengine
 
 from database import Streamer
 import settings
-import twitch
+from twitch import TwitchAPI
 import default_commands
 import guessing_game
 
@@ -14,6 +14,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
     """An IRC bot for connecting to Twitch chat servers."""
     def __init__(self):
         self.logger = settings.init_logger(__name__)
+        self.twitch = TwitchAPI(os.environ['TWITCH_ID'])
         self.config = {
             "username": os.environ['TWITCH_BOT_NAME'],
             "channel_name": os.environ['TWITCH_CHANNEL'],
@@ -30,7 +31,8 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         port = 6667
         self.logger.info('Connecting to %s on port %s...', server, port)
         irc.bot.SingleServerIRCBot.__init__(
-            self, [(server, port, twitch.TOKEN)], self.config['username'], self.config['username'])
+            self, [(server, port, os.environ['TWITCH_TOKEN'])],
+            self.config['username'], self.config['username'])
         self.logger.info('Connecting to database...')
         self._database_connect()
         self._get_streamer_from_database()
@@ -42,11 +44,11 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
 
     # Methods
     def _get_channel_id(self):
-        self.config['channel_id'] = twitch.get_user_id(self.config['channel_name'])
+        self.config['channel_id'] = self.twitch.get_user_id(self.config['channel_name'])
         self.logger.debug('Channel ID is %s', self.config['channel_id'])
 
     def _get_self_id(self):
-        self.config['id'] = twitch.get_user_id(self.config['username'])
+        self.config['id'] = self.twitch.get_user_id(self.config['username'])
         self.logger.debug('Self ID is %s', self.config['id'])
 
 
@@ -104,7 +106,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         }
         user = {
             "username": user_string[0],
-            "user-id": twitch.get_user_id(user_string[0]),
+            "user-id": self.twitch.get_user_id(user_string[0]),
             "channel-id": self.config['channel_id']
         }
         return user, permissions
