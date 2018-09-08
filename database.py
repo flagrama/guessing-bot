@@ -39,7 +39,7 @@ class BlacklistUser(mongoengine.EmbeddedDocument):
     username = mongoengine.StringField(required=True)
     user_id = mongoengine.IntField(required=True)
 
-class Streamer(mongoengine.Document):
+class DbStreamer(mongoengine.Document):
     """The streamer database class."""
     name = mongoengine.StringField(required=True)
     channel_id = mongoengine.StringField(required=True, unique=True)
@@ -50,3 +50,5 @@ class Streamer(mongoengine.Document):
     whitelist = mongoengine.ListField(mongoengine.EmbeddedDocumentField(WhitelistUser))
     blacklist = mongoengine.ListField(mongoengine.EmbeddedDocumentField(BlacklistUser))
     sessions = mongoengine.ListField(mongoengine.EmbeddedDocumentField(Session))
+
+    meta = {"collection":"streamer"}

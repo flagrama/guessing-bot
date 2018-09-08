@@ -4,7 +4,7 @@ from collections import deque, OrderedDict
 
 import jstyleson
 
-from database import Streamer, SessionLogEntry
+from database import DbStreamer, SessionLogEntry
 import settings
 
 def _remove_stale_guesses(guess_queue, username):
@@ -152,7 +152,7 @@ def complete_guess(guessing_game, item):
             new_guess_deque.append(guess)
             continue
         if not first_guess:
-            Streamer.objects.filter( #pylint: disable=no-member
+            DbStreamer.objects.filter( #pylint: disable=no-member
                 channel_id=guessing_game.state['database']['streamer'].channel_id,
                 participants__user_id=guess['user-id']).update(
                     inc__participants__S__session_points=
@@ -163,7 +163,7 @@ def complete_guess(guessing_game, item):
                 'User %s made the first correct guess earning %s extra points',
                 guess['username'], guessing_game.state['database']['streamer'].first_bonus)
             first_guess = True
-        Streamer.objects.filter( #pylint: disable=no-member
+        DbStreamer.objects.filter( #pylint: disable=no-member
             channel_id=guessing_game.state['database']['streamer'].channel_id,
             participants__user_id=guess['user-id']).modify(
                 inc__participants__S__session_points=
@@ -214,10 +214,10 @@ def complete_medal_guess(guessing_game, command):
             if guesser['correct'] < hiscore:
                 continue
             try:
-                streamer = Streamer.objects.get( #pylint: disable=no-member
+                streamer = DbStreamer.objects.get( #pylint: disable=no-member
                     channel_id=guessing_game.state['database']['channel-id'],
                     participants__user_id=guesser['user-id'])
-            except Streamer.DoesNotExist: #pylint: disable=no-member
+            except DbStreamer.DoesNotExist: #pylint: disable=no-member
                 guessing_game.logger.error('Participant with ID %s does not exist in the database',
                                            guesser['user-id'])
                 return "User %s does not exist." % guesser['username']
@@ -270,10 +270,10 @@ def complete_song_guess(guessing_game, command):
             if guesser['correct'] < hiscore:
                 continue
             try:
-                streamer = Streamer.objects.get( #pylint: disable=no-member
+                streamer = DbStreamer.objects.get( #pylint: disable=no-member
                     channel_id=guessing_game.state['database']['channel-id'],
                     participants__user_id=guesser['user-id'])
-            except Streamer.DoesNotExist: #pylint: disable=no-member
+            except DbStreamer.DoesNotExist: #pylint: disable=no-member
                 guessing_game.logger.error('Participant with ID %s does not exist in the database',
                                            guesser['user-id'])
                 return "User %s does not exist." % guesser['username']

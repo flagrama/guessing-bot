@@ -2,7 +2,7 @@
 from functools import partial
 import mongoengine
 
-from database import Streamer, BlacklistUser, WhitelistUser
+from database import DbStreamer, BlacklistUser, WhitelistUser
 import twitch
 import settings
 
@@ -28,12 +28,12 @@ def _add_whitelist_command(command, streamer, channel_id):
 
     new_user = WhitelistUser(username=username, user_id=new_user_id)
     try:
-        db_streamer = Streamer.objects.get(channel_id=channel_id, #pylint: disable=no-member
+        db_streamer = DbStreamer.objects.get(channel_id=channel_id, #pylint: disable=no-member
                                            whitelist__user_id=new_user_id)
         if db_streamer.whitelist:
             logger.info('User with ID %s already exists in the database', new_user_id)
             return message
-    except Streamer.DoesNotExist: #pylint: disable=no-member
+    except DbStreamer.DoesNotExist: #pylint: disable=no-member
         logger.error('User with ID %s does not exist in the database', new_user_id)
     try:
         streamer.whitelist.append(new_user)
@@ -61,18 +61,18 @@ def _remove_whitelist_command(command, streamer, channel_id):
         return message
 
     try:
-        db_streamer = Streamer.objects.get(channel_id=channel_id, #pylint: disable=no-member
+        db_streamer = DbStreamer.objects.get(channel_id=channel_id, #pylint: disable=no-member
                                            whitelist__user_id=existing_user_id)
         if not db_streamer.whitelist:
             return message
-        Streamer.objects.update(channel_id=channel_id, #pylint: disable=no-member
+        DbStreamer.objects.update(channel_id=channel_id, #pylint: disable=no-member
                                 pull__whitelist__user_id=existing_user_id)
         streamer.save()
         streamer.reload()
         message = 'User %s removed from whitelist' % command[2]
         logger.info(message)
         return message
-    except Streamer.DoesNotExist: #pylint: disable=no-member
+    except DbStreamer.DoesNotExist: #pylint: disable=no-member
         logger.error('User with ID %s does not exist in the database', existing_user_id)
         return message
 
@@ -92,12 +92,12 @@ def _add_blacklist_command(command, streamer, channel_id):
 
     new_user = BlacklistUser(username=username, user_id=new_user_id)
     try:
-        db_streamer = Streamer.objects.get(channel_id=channel_id, #pylint: disable=no-member
+        db_streamer = DbStreamer.objects.get(channel_id=channel_id, #pylint: disable=no-member
                                            blacklist__user_id=new_user_id)
         if db_streamer.blacklist:
             logger.info('User with ID %s already exists in the database', new_user_id)
             return message
-    except Streamer.DoesNotExist: #pylint: disable=no-member
+    except DbStreamer.DoesNotExist: #pylint: disable=no-member
         logger.error('User with ID %s does not exist in the database', new_user_id)
 
     try:
@@ -126,18 +126,18 @@ def _remove_blacklist_command(command, streamer, channel_id):
         return message
 
     try:
-        db_streamer = Streamer.objects.get(channel_id=channel_id, #pylint: disable=no-member
+        db_streamer = DbStreamer.objects.get(channel_id=channel_id, #pylint: disable=no-member
                                            blacklist__user_id=existing_user_id)
         if not db_streamer.whitelist:
             return message
-        Streamer.objects.update(channel_id=channel_id, #pylint: disable=no-member
+        DbStreamer.objects.update(channel_id=channel_id, #pylint: disable=no-member
                                 pull__blacklist__user_id=existing_user_id)
         streamer.save()
         streamer.reload()
         message = 'User %s removed from blacklist' % command[2]
         logger.info(message)
         return message
-    except Streamer.DoesNotExist: #pylint: disable=no-member
+    except DbStreamer.DoesNotExist: #pylint: disable=no-member
         logger.error('User with ID %s does not exist in the database', existing_user_id)
         return message
 

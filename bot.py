@@ -4,7 +4,7 @@ import os
 import irc.bot
 import mongoengine
 
-from database import Streamer
+from database import DbStreamer
 import settings
 from twitch import TwitchAPI
 import default_commands
@@ -15,6 +15,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
     def __init__(self):
         self.logger = settings.init_logger(__name__)
         self.twitch = TwitchAPI(os.environ['TWITCH_ID'])
+        self.logger.info('Twitch API calls initialized.')
         self.config = {
             "username": os.environ['TWITCH_BOT_NAME'],
             "channel_name": os.environ['TWITCH_CHANNEL'],
@@ -63,7 +64,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
             raise error
 
     def _get_streamer_from_database(self):
-        for streamer in Streamer.objects(channel_id=self.config['channel_id']): #pylint: disable=no-member
+        for streamer in DbStreamer.objects(channel_id=self.config['channel_id']): #pylint: disable=no-member
             self.streamer = streamer
 
         if not hasattr(self, 'streamer'):
@@ -71,7 +72,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
                 'Unable to find streamer with ID %s in the database', self.config['channel_id'])
             self.logger.debug('Creating new entry for streamer with ID %s',
                               self.config['channel_id'])
-            self.streamer = Streamer(name=self.config['channel_name'],
+            self.streamer = DbStreamer(name=self.config['channel_name'],
                                      channel_id=self.config['channel_id'])
             self.streamer.save()
 
@@ -88,11 +89,11 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
             if tag['key'] == 'user-id':
                 if tag['value'] == self.config['channel_id']:
                     mod = True
-                if Streamer.objects.filter( #pylint: disable=no-member
+                if DbStreamer.objects.filter( #pylint: disable=no-member
                         channel_id=self.streamer.channel_id,
                         whitelist__user_id=tag['value']):
                     whitelist = True
-                if Streamer.objects.filter( #pylint: disable=no-member
+                if DbStreamer.objects.filter( #pylint: disable=no-member
                         channel_id=self.streamer.channel_id,
                         blacklist__user_id=tag['value']):
                     blacklist = True
@@ -126,13 +127,13 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
             return
         self.logger.debug('Built-in command not found')
         try:
-            streamer = Streamer.objects.get( #pylint: disable=no-member
+            streamer = DbStreamer.objects.get( #pylint: disable=no-member
                 channel_id=self.streamer.channel_id, commands__name=command_name)
             for custom_command in streamer.commands:
                 if command_name in custom_command['name']:
                     self.logger.info('Custom command %s received', custom_command.name)
                     connection.privmsg(self.config['channel'], custom_command.output)
-        except Streamer.DoesNotExist: #pylint: disable=no-member
+        except DbStreamer.DoesNotExist: #pylint: disable=no-member
             self.logger.error(
                 'Custom command %s not found in database but is in command list', command_name)
 
@@ -146,10 +147,11 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         connection.cap('REQ', ':twitch.tv/tags')
         connection.cap('REQ', ':twitch.tv/commands')
         connection.join(self.config['channel'])
+        self.logger.info('Joined %s', self.config['channel'])
 
     def on_pubmsg(self, connection, event):
         """Event that executes whenever an IRC message is receieved."""
-        self.logger.debug(event)
+        self.logger.debug('Message recieved: %s', event)
         for tag in event.tags:
             if tag['key'] == 'user-id':
                 if tag['value'] == self.config['id']:

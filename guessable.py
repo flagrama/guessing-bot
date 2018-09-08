@@ -42,10 +42,12 @@ class Guessable():
 
     def _check_items_allowed(self, item, modes):
         if any(skip in item for skip in self.blacklist):
+            self.logger.debug('Item %s not allowed', item)
             return False
         for mode in self.modes:
             for items in mode.items:
                 if items in item and mode.name not in modes:
+                    self.logger.debug('Item %s not allowed in set modes %s', item, modes)
                     return False
         return True
 
@@ -62,7 +64,6 @@ class Guessable():
         for item in items:
             if 'name' in item:
                 if not self._check_items_allowed(item['name'], modes):
-                    self.logger.debug('Item %s not allowed in set modes %s', item['name'], modes)
                     continue
             if 'codes' in item:
                 codes = []

@@ -9,7 +9,7 @@ import csv
 import boto3
 import jstyleson
 
-from database import Streamer, Session, Participant
+from database import DbStreamer, Session, Participant
 from mode import Mode
 from guessable import Guessable
 import game
@@ -222,13 +222,13 @@ class GuessingGameBot():
     def guess_command(self, guessing_game, command, user):
         guesser = None
         try:
-            streamer = Streamer.objects.get( #pylint: disable=no-member
+            streamer = DbStreamer.objects.get( #pylint: disable=no-member
                 channel_id=guessing_game.state['database']['channel-id'],
                 participants__user_id=user['user-id'])
             for participant in streamer.participants:
                 if participant.user_id == int(user['user-id']):
                     guesser = participant
-        except Streamer.DoesNotExist: #pylint: disable=no-member
+        except DbStreamer.DoesNotExist: #pylint: disable=no-member
             participant = Participant(
                 username=user['username'],
                 user_id=user['user-id'],
@@ -237,7 +237,7 @@ class GuessingGameBot():
             guessing_game.state['database']['streamer'].participants.append(participant)
             guessing_game.state['database']['streamer'].save()
             guessing_game.state['database']['streamer'].reload()
-            streamer = Streamer.objects.get( #pylint: disable=no-member
+            streamer = DbStreamer.objects.get( #pylint: disable=no-member
                 channel_id=guessing_game.state['database']['channel-id'],
                 participants__user_id=user['user-id'])
             for participant in streamer.participants:
@@ -359,24 +359,24 @@ class GuessingGameBot():
 
     def points_check(self, username):
         try:
-            streamer = Streamer.objects.get( #pylint: disable=no-member
+            streamer = DbStreamer.objects.get( #pylint: disable=no-member
                 channel_id=self.state['database']['channel-id'], participants__username=username)
             for participant in streamer.participants:
                 if participant.username == username:
                     return '%s has %s points' % (username, participant.session_points)
-        except Streamer.DoesNotExist: #pylint: disable=no-member
+        except DbStreamer.DoesNotExist: #pylint: disable=no-member
             self.logger.error('Participant with username %s does not exist in the database',
                               username)
         return None
 
     def total_points_check(self, username):
         try:
-            streamer = Streamer.objects.get( #pylint: disable=no-member
+            streamer = DbStreamer.objects.get( #pylint: disable=no-member
                 channel_id=self.state['database']['channel-id'], participants__username=username)
             for participant in streamer.participants:
                 if participant.username == username:
                     return '%s has %s points' % (username, participant.total_points)
-        except Streamer.DoesNotExist: #pylint: disable=no-member
+        except DbStreamer.DoesNotExist: #pylint: disable=no-member
             self.logger.error('Participant with username %s does not exist in the database',
                               username)
         return None
