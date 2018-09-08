@@ -136,6 +136,8 @@ class GuessingGameBot():
         if self.state['running']:
             self.logger.info('Guessing game already running')
             return None
+        with open('items.json') as items:
+            self.guessables.items = (jstyleson.load(items), self.state['mode'])
         self.state['running'] = True
         message = 'Guessing game started by %s' % user['username']
         self.logger.info(message)
@@ -256,7 +258,9 @@ class GuessingGameBot():
         if not guessing_game.state['running']:
             return
         command_value = command[1].lower()
-        item = self.guessables.parse_item(command_value, self.state['mode'])
+        item = self.guessables.parse_item(command_value)
+        if not item:
+            self.logger.info('Item %s not found', command_value)
         guessing.do_item_guess(user, item, guesser, guessing_game)
 
     @staticmethod
@@ -338,7 +342,9 @@ class GuessingGameBot():
             if subcommand_name in self.guessables.medals:
                 return guessing.complete_medal_guess(self, command[1:])
         command_value = command[1].lower()
-        item = self.guessables.parse_item(command_value, self.state['mode'])
+        item = self.guessables.parse_item(command_value)
+        if not item:
+            self.logger.info('Item %s not found', command_value)
         return guessing.complete_guess(self, item)
 
     def _song_command(self, command):

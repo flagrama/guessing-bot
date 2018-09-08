@@ -4,9 +4,6 @@ import settings
 class Guessable():
     def __init__(self, *blacklist, modes, extra):
         self.logger = settings.init_logger(__name__)
-        with open('items.json') as items:
-            self.items = jstyleson.load(items)
-        self.logger.debug('Items loaded')
         self.blacklist = []
         self.modes = modes
         for item in blacklist:
@@ -27,6 +24,22 @@ class Guessable():
         self.__modes = modes
         self.logger.debug('Modes set')
 
+    @property
+    def items(self):
+        return self.__items
+
+    @items.setter
+    def items(self, val):
+        try:
+            items, modes = val
+        except ValueError:
+            message = "Pass an iterable with two items"
+            self.logger.error(message)
+            raise ValueError(message)
+        else:
+            self.__items = self.parse_items(items, modes)
+            self.logger.debug('Items set')
+
     def _check_items_allowed(self, item, modes):
         if any(skip in item for skip in self.blacklist):
             return False
@@ -35,18 +48,27 @@ class Guessable():
                 return False
         return True
 
-    def parse_item(self, guess, modes):
+    def parse_item(self, guess):
+        for name, codes in self.items.items():
+            if guess in codes:
+                self.logger.debug('Item %s found', name)
+                return name
+        return None
+
+    def parse_items(self, items, modes):
         """Searches for a item with the value of guess in its codes entry."""
-        for item in self.items:
+        parsed_items = {}
+        for item in items:
             if 'name' in item:
                 if not self._check_items_allowed(item['name'], modes):
                     self.logger.debug('Item %s not allowed in set modes %s', item['name'], modes)
                     continue
             if 'codes' in item:
+                codes = []
                 for code in item['codes'].split(','):
-                    if guess in [code.strip()]:
-                        self.logger.debug('Item %s found', item['name'])
-                        return item['name']
+                    codes += [code]
+                parsed_items[item['name']] = codes
+                self.logger.debug('Item %s with codes %s found', item['name'], codes)
             elif 'stages' in item:
                 codes = []
                 for stage in item['stages']:
@@ -55,7 +77,6 @@ class Guessable():
                             continue
                         for code in stage['codes'].split(','):
                             codes += [code.strip()]
-                if guess in codes:
-                    self.logger.debug('Item %s found', item['name'])
-                    return item['name']
-        return None
+                parsed_items[item['name']] = codes
+                self.logger.debug('Item %s with codes %s found', item['name'], codes)
+        return parsed_items

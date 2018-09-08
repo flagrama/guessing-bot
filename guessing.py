@@ -22,7 +22,6 @@ def do_item_guess(user, item, participant, guessing_game):
     """Adds a participant's item guess to the queue and creates a session log entry."""
     logger = settings.init_logger(__name__)
     if not item:
-        logger.info('Item %s not found', item)
         return
     guessing_game.guesses['item'] = _remove_stale_guesses(
         guessing_game.guesses['item'], user['username'])
@@ -142,7 +141,6 @@ def complete_guess(guessing_game, item):
         guessing_game.logger.info('Guessing game not running')
         return
     if not item:
-        guessing_game.logger.info('Item %s not found', item)
         return
     expiration = datetime.now() - timedelta(minutes=15)
     new_guess_deque = deque()
