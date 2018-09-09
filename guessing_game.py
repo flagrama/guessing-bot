@@ -35,18 +35,39 @@ class GuessingGameBot():
             "medals": {},
             "modes": [],
             "guessables": {
-                "medals": [
-                    'forest', 'fire', 'water', 'shadow', 'spirit', 'light'
-                ],
-                "dungeons": [
-                    'deku', 'dodongo', 'jabu'
-                ],
-                "songs": [
-                    "Zelda's Lullaby", "Saria's Song", "Epona's Song", "Sun's Song",
-                    "Song of Time", "Song of Storms", "Minuet of Forest", "Bolero of Fire",
-                    "Serenade of Water", "Requiem of Spirit", "Nocturne of Shadow",
-                    "Prelude of Light"
-                ]
+                "medals": {
+                    "Forest Medallion": ['forest'],
+                    "Fire Medallion": ['fire'],
+                    "Water Medallion": ['water'],
+                    "Shadow Medallion": ['shadow'],
+                    "Spirit Medallion": ['spirit'],
+                    "Light Medallion": ['light']
+                },
+                "dungeons": {
+                    "Inside the Great Deku Tree": ['deku'],
+                    "Dodongo's Cavern": ['dodongo'],
+                    "Inside Jabu Jabu's Belly": ['jabu'],
+                    "Forest Temple": ['forest'],
+                    "Fire Temple": ['fire'],
+                    "Water Temple": ['water'],
+                    "Shadow Temple": ['shadow'],
+                    "Spirit Temple": ['spirit'],
+                    "Freebie": ['free']
+                },
+                "songs": {
+                    "Zelda's Lullaby": ['zl', 'lullaby', 'zeldas', 'zelda'],
+                    "Saria's Song": ['saria', 'sarias'],
+                    "Epona's Song": ['epona', 'eponas'],
+                    "Sun's Song": ['sunsong', 'sun', 'suns'],
+                    "Song of Time": ['songoftime', 'time', 'sot'],
+                    "Song of Storms": ['songofstorms', 'sos', 'storm', 'storms'],
+                    "Minuet of Forest": ['minuet', 'greennote', 'mof'],
+                    "Bolero of Fire": ['bolero', 'rednote', 'bof'],
+                    "Serenade of Water": ['serenade', 'bluenote', 'sow'],
+                    "Nocturne of Shadow": ['nocturne', 'purplenote', 'nos'],
+                    "Requiem of Spirit": ['requiem', 'orangenote', 'ros'],
+                    "Prelude of Light": ['prelude', 'yellownote', 'pol']
+                }
             },
             "database": {
                 "streamer": streamer,
@@ -322,7 +343,6 @@ class GuessingGameBot():
                 return None
         return None
 
-    # TODO: Fix this mess for setting the freebie medal
     def _hud_command(self, command):
         if len(command) > 1:
             subcommand_name = command[1]
@@ -332,15 +352,15 @@ class GuessingGameBot():
                     self.state['database']['streamer'],
                     self.state['database']['channel-id']
                     )
-            if subcommand_name in self.guessables.medals:
+            for medal in self.guessables.medals:
+                print(medal)
+                print(subcommand_name)
+                print(self.guessables.medals[medal])
+                if subcommand_name in self.guessables.medals[medal]:
                 return guessing.complete_medal_guess(self, command[1:])
         if not self.state['running']:
             self.logger.info('Guessing game not running')
             return None
-        if len(command) > 1:
-            subcommand_name = command[1]
-            if subcommand_name in self.guessables.medals:
-                return guessing.complete_medal_guess(self, command[1:])
         command_value = command[1].lower()
         item = self.guessables.parse_item(command_value)
         if not item:
@@ -401,21 +421,9 @@ class GuessingGameBot():
 
     # Currently will assume !hud <item> is the Guess Completion command
 
-    # Integrate with the database in the future
     def parse_songs(self, songcode):
         """Searches for a song with the value of songcode in its codes entry."""
-        for item in self.guessables.items:
-            if 'name' in item:
-                if not item['name'] in self.guessables.songs:
-                    continue
-            if 'stages' in item:
-                codes = []
-                for stage in item['stages']:
-                    if 'codes' in stage:
-                        if any(code in stage['codes'].split(',') for code in codes):
-                            continue
-                        for code in stage['codes'].split(','):
-                            codes += [code.strip()]
+        for name, codes in self.guessables.songs.items():
                 if songcode in codes:
-                    return item['name']
+                return name
         return None

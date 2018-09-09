@@ -56,21 +56,19 @@ def do_medal_guess(user, medals, participant, guessing_game):
     guessing_game.guesses['medal'] = _remove_stale_guesses(
         guessing_game.guesses['medal'], user['username'])
     medal_guess = OrderedDict()
-    medal_guess["forest"] = None
-    medal_guess["fire"] = None
-    medal_guess["water"] = None
-    medal_guess["spirit"] = None
-    medal_guess["shadow"] = None
-    medal_guess["light"] = None
+    medal_guess["Forest Medallion"] = None
+    medal_guess["Fire Medallion"] = None
+    medal_guess["Water Medallion"] = None
+    medal_guess["Spirit Medallion"] = None
+    medal_guess["Shadow Medallion"] = None
+    medal_guess["Light Medallion"] = None
     i = 0
     for medal in medal_guess:
         guess = medals[i]
-        if guess not in guessing_game.state['guessables']['dungeons'] and guess != 'free':
-            logger.info('Invalid medal %s', guess)
+        if not any(guess in s for s in guessing_game.state['guessables']['dungeons'].values()):
+            logger.info('Invalid dungeon %s', guess)
             return
-        if medal == guessing_game.state['freebie'] or guess == 'free':
-            continue
-        medal_guess[medal] = guess
+        medal_guess[medal] = _get_dungeon_name(guess, guessing_game)
         i += 1
     guess = SessionLogEntry(
         timestamp=datetime.now(),
@@ -84,7 +82,7 @@ def do_medal_guess(user, medals, participant, guessing_game):
     medal_guess['user-id'] = user['user-id']
     medal_guess['username'] = user['username']
     medal_guess['timestamp'] = datetime.now()
-    guessing_game.guesses['song'].append(medal_guess)
+    guessing_game.guesses['medal'].append(medal_guess)
     guessing_game.state['database']['current-session'].guesses.append(guess)
     logger.debug('Medal Guess: %s', medal_guess)
 
@@ -176,25 +174,33 @@ def complete_guess(guessing_game, item):
         guessing_game.guesses['item'] = new_guess_deque
         guessing_game.logger.info('Guesses completed')
 
+def _get_medal_name(code, guessing_game):
+    for name, codes in guessing_game.state['guessables']['medals'].items():
+        if code in codes:
+            return name
+    return None
+
+def _get_dungeon_name(code, guessing_game):
+    for name, codes in guessing_game.state['guessables']['dungeons'].items():
+        if code in codes:
+            return name
+    return None
+
 def complete_medal_guess(guessing_game, command):
     """Completes Medal guess."""
     if len(command) < 2:
+        guessing_game.logger.debug('Medal guess completion command too short')
         return None
-    if command[1] not in guessing_game.state['guessables']['dungeons']:
-        if not guessing_game.state['running'] and command[1] == 'free':
-            guessing_game.state['freebie'] = command[0]
-            guessing_game.logger.info('Medal %s set to freebie', command[0])
-        return None
-    if command[0] in guessing_game.state['guessables']['medals']:
-        if command[0] in guessing_game.state['medals']:
-            guessing_game.logger.info('Medal %s already in guesses')
-            if guessing_game.state['medals'][command[0]] != command[1]:
-                guessing_game.state['medals'][command[0]] = command[1]
-                guessing_game.logger.info('Medal %s set to dungeon %s', command[0], command[1])
-        guessing_game.state['medals'][command[0]] = command[1]
-        guessing_game.logger.info('Medal %s set to dungeon %s', command[0], command[1])
-    if ((guessing_game.state['freebie'] and len(guessing_game.state['medals']) == 5)
-            or len(guessing_game.state['medals']) == 6):
+    guessed_medal = command[0]
+    guessed_location = command[1]
+    guessing_game.logger.info('%s is at %s', guessed_medal, guessed_location)
+    this_medal = _get_medal_name(guessed_medal, guessing_game)
+    this_dungeon = _get_dungeon_name(guessed_location, guessing_game)
+    if this_medal and this_dungeon:
+        guessing_game.state['medals'][this_medal] = this_dungeon
+        guessing_game.logger.debug(guessing_game.state['medals'])
+    if len(guessing_game.state['medals']) == 6:
+        guessing_game.logger.info('Completing medal guesses')
         local_guesses = deque()
         hiscore = 0
         for guess in guessing_game.guesses['medal']:
@@ -230,7 +236,9 @@ def complete_medal_guess(guessing_game, command):
             streamer.save()
             streamer.reload()
             guessing_game.guesses['medal'] = deque()
-            guessing_game.logger.info('Medal guesses completed')
+            message = 'Medal guesses completed'
+            guessing_game.logger.info(message)
+            return message
     return None
 
 def complete_song_guess(guessing_game, command):
@@ -244,19 +252,22 @@ def complete_song_guess(guessing_game, command):
         return None
     if new_song in guessing_game.state['guessables']['songs']:
         if new_song in guessing_game.state['songs']:
-            guessing_game.logger.info('Song %s already in guesses')
+            guessing_game.logger.info('Song %s already in guesses', new_song)
             if guessing_game.state['songs'][new_song] != new_location:
                 guessing_game.state['songs'][new_song] = new_location
                 guessing_game.logger.info('Song %s set to location %s', new_song, new_location)
+                return
         guessing_game.state['songs'][new_song] = new_location
         guessing_game.logger.info('Song %s set to location %s', new_song, new_location)
+        guessing_game.logger.debug(guessing_game.state['songs'])
     if len(guessing_game.state['songs']) == 12:
+        guessing_game.logger.info('Finishing song guesses')
         local_guesses = deque()
         hiscore = 0
         for guess in guessing_game.guesses['song']:
             count = 0
             for final in guessing_game.state['songs']:
-                if guessing_game.parse_songs(guess[final]) == guessing_game.state['songs'][final]:
+                if guess[final] == guessing_game.state['songs'][final]:
                     count += 1
             localguess = {
                 "user-id": guess['user-id'], "username": guess['username'], "correct": count
