@@ -23,8 +23,8 @@ def do_item_guess(user, item, participant, guessing_game):
     logger = settings.init_logger(__name__)
     if not item:
         return
-    guessing_game.guesses['item'] = _remove_stale_guesses(
-        guessing_game.guesses['item'], user['username'])
+    guessing_game.guesses['items'] = _remove_stale_guesses(
+        guessing_game.guesses['items'], user['username'])
     now = datetime.now()
     item_guess = {
         "timestamp": now,
@@ -41,7 +41,7 @@ def do_item_guess(user, item, participant, guessing_game):
         session_points=participant.session_points,
         total_points=participant.total_points
     )
-    guessing_game.guesses['item'].append(item_guess)
+    guessing_game.guesses['items'].append(item_guess)
     guessing_game.state['database']['current-session'].guesses.append(guess)
     logger.info('%s Item %s guessed by user %s', now, item, user['username'])
     logger.debug(item_guess)
@@ -53,8 +53,8 @@ def do_medal_guess(user, medals, participant, guessing_game):
         logger.info('Medal command incomplete')
         logger.debug(medals)
         return
-    guessing_game.guesses['medal'] = _remove_stale_guesses(
-        guessing_game.guesses['medal'], user['username'])
+    guessing_game.guesses['medals'] = _remove_stale_guesses(
+        guessing_game.guesses['medals'], user['username'])
     medal_guess = OrderedDict()
     medal_guess["Forest Medallion"] = None
     medal_guess["Fire Medallion"] = None
@@ -82,7 +82,7 @@ def do_medal_guess(user, medals, participant, guessing_game):
     medal_guess['user-id'] = user['user-id']
     medal_guess['username'] = user['username']
     medal_guess['timestamp'] = datetime.now()
-    guessing_game.guesses['medal'].append(medal_guess)
+    guessing_game.guesses['medals'].append(medal_guess)
     guessing_game.state['database']['current-session'].guesses.append(guess)
     logger.debug('Medal Guess: %s', medal_guess)
 
@@ -93,8 +93,8 @@ def do_song_guess(user, songs, participant, guessing_game):
         logger.info('song command incomplete')
         logger.debug(songs)
         return
-    guessing_game.guesses['song'] = _remove_stale_guesses(
-        guessing_game.guesses['song'], user['username'])
+    guessing_game.guesses['songs'] = _remove_stale_guesses(
+        guessing_game.guesses['songs'], user['username'])
     song_guess = OrderedDict()
     song_guess["Zelda's Lullaby"] = None
     song_guess["Epona's Song"] = None
@@ -129,7 +129,7 @@ def do_song_guess(user, songs, participant, guessing_game):
     song_guess['user-id'] = user['user-id']
     song_guess['username'] = user['username']
     song_guess['timestamp'] = datetime.now()
-    guessing_game.guesses['song'].append(song_guess)
+    guessing_game.guesses['songs'].append(song_guess)
     guessing_game.state['database']['current-session'].guesses.append(guess)
     logger.debug(song_guess)
 
@@ -143,7 +143,7 @@ def complete_guess(guessing_game, item):
     expiration = datetime.now() - timedelta(minutes=15)
     new_guess_deque = deque()
     first_guess = False
-    for guess in guessing_game.guesses['item']:
+    for guess in guessing_game.guesses['items']:
         if guess['timestamp'] < expiration:
             continue
         if guess['guess'] is not item:
@@ -171,7 +171,7 @@ def complete_guess(guessing_game, item):
         guessing_game.logger.info(
             'User %s guessed correctly and earned %s points',
             guess['username'], guessing_game.state['database']['streamer'].points)
-        guessing_game.guesses['item'] = new_guess_deque
+        guessing_game.guesses['items'] = new_guess_deque
         guessing_game.logger.info('Guesses completed')
 
 def _get_medal_name(code, guessing_game):
@@ -203,7 +203,7 @@ def complete_medal_guess(guessing_game, command):
         guessing_game.logger.info('Completing medal guesses')
         local_guesses = deque()
         hiscore = 0
-        for guess in guessing_game.guesses['medal']:
+        for guess in guessing_game.guesses['medals']:
             count = 0
             for final in guessing_game.state['medals']:
                 if guess[final] == guessing_game.state['medals'][final]:
@@ -235,7 +235,7 @@ def complete_medal_guess(guessing_game, command):
                                       guesser['username'], hiscore)
             streamer.save()
             streamer.reload()
-            guessing_game.guesses['medal'] = deque()
+            guessing_game.guesses['medals'] = deque()
             message = 'Medal guesses completed'
             guessing_game.logger.info(message)
             return message
@@ -264,7 +264,7 @@ def complete_song_guess(guessing_game, command):
         guessing_game.logger.info('Finishing song guesses')
         local_guesses = deque()
         hiscore = 0
-        for guess in guessing_game.guesses['song']:
+        for guess in guessing_game.guesses['songs']:
             count = 0
             for final in guessing_game.state['songs']:
                 if guess[final] == guessing_game.state['songs'][final]:
@@ -296,6 +296,6 @@ def complete_song_guess(guessing_game, command):
                                       guesser['username'], hiscore)
             streamer.save()
             streamer.reload()
-            guessing_game.guesses['song'] = deque()
+            guessing_game.guesses['songs'] = deque()
             guessing_game.logger.info('Song guesses completed')
     return None

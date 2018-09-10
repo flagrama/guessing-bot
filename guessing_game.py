@@ -11,8 +11,8 @@ import jstyleson
 
 from database import DbStreamer, Session, Participant
 from mode import Mode
-from guessable import Guessable
-import game
+from Guessable import Guessable
+from game import GuessingGame
 import guessing
 import whitelist_commands
 import settings
@@ -23,7 +23,7 @@ class GuessingGameBot():
         """The constructor for GuessingGame class."""
         self.logger = settings.init_logger(__name__)
         self.guesses = {
-            "item": deque(),
+            "items": deque(),
             "medal": deque(),
             "song": deque()
         }
@@ -80,14 +80,12 @@ class GuessingGameBot():
         self.state['modes'] += [Mode('keysanity', 'Boss Key')]
         self.state['modes'] += [Mode('egg', 'Child Trade')]
         self.state['modes'] += [Mode('ocarina', 'Ocarina')]
-        blacklist = [
-            'Keys', 'Treasures', 'Skulls', 'Tokens', 'Prize', 'Label', 'Badge',
-            'Heart Container', 'Pieces'
-        ]
-        self.state['guessables']['dungeons'] += [
-            medal for medal in self.state['guessables']['medals'] if medal != 'light']
-        self.guessables = Guessable(*blacklist, modes=self.state['modes'], extra=self.state['guessables'])
+        blacklist = ['Keys', 'Treasures', 'Skulls', 'Tokens', 'Prize',
+                     'Label', 'Badge', 'Heart', 'Medal']
+        self.guessables = Guessable(
+            *blacklist, modes=self.state['modes'], extra=self.state['guessables'])
         self.guessables.modes += [Mode('songsanity', *getattr(self.guessables, 'songs'))]
+        self.guessing_game = GuessingGame(self.guessables)
 # End Region
         self.commands = {
             "whitelist": ['add', 'remove', 'ban', 'unban'],
@@ -168,9 +166,9 @@ class GuessingGameBot():
         if not self.state['running']:
             self.logger.info('Guessing game not running')
             return None
-        self.guesses['item'] = deque()
-        self.guesses['medal'] = deque()
-        self.guesses['song'] = deque()
+        self.guesses['items'] = deque()
+        self.guesses['medals'] = deque()
+        self.guesses['songs'] = deque()
         self.state['running'] = False
         self.state['freebie'] = None
         self.state['mode'].clear()
@@ -279,7 +277,7 @@ class GuessingGameBot():
         if not guessing_game.state['running']:
             return
         command_value = command[1].lower()
-        item = self.guessables.parse_item(command_value)
+        item = self.guessables.get_item(command_value)
         if not item:
             self.logger.info('Item %s not found', command_value)
         guessing.do_item_guess(user, item, guesser, guessing_game)
@@ -357,12 +355,12 @@ class GuessingGameBot():
                 print(subcommand_name)
                 print(self.guessables.medals[medal])
                 if subcommand_name in self.guessables.medals[medal]:
-                return guessing.complete_medal_guess(self, command[1:])
+                    return guessing.complete_medal_guess(self, command[1:])
         if not self.state['running']:
             self.logger.info('Guessing game not running')
             return None
         command_value = command[1].lower()
-        item = self.guessables.parse_item(command_value)
+        item = self.guessables.get_item(command_value)
         if not item:
             self.logger.info('Item %s not found', command_value)
         return guessing.complete_guess(self, item)
@@ -424,6 +422,6 @@ class GuessingGameBot():
     def parse_songs(self, songcode):
         """Searches for a song with the value of songcode in its codes entry."""
         for name, codes in self.guessables.songs.items():
-                if songcode in codes:
+            if songcode in codes:
                 return name
         return None
