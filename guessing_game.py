@@ -384,7 +384,6 @@ class GuessingGame():
                 total_points=0)
             self.database['streamer'].participants.append(participant)
             self.database['streamer'].save()
-            self.database['streamer'].reload()
             streamer = Streamer.objects.get( #pylint: disable=no-member
                 channel_id=self.database['channel-id'], participants__user_id=user['user-id'])
             for participant in streamer.participants:
