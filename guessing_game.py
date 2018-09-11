@@ -370,13 +370,11 @@ class GuessingGame():
 
     def _guess_command(self, command, user):
         guesser = None
-        try:
-            streamer = Streamer.objects.get( #pylint: disable=no-member
-                channel_id=self.database['channel-id'], participants__user_id=user['user-id'])
-            for participant in streamer.participants:
+        for participant in self.database['streamer'].participants:
                 if participant.user_id == int(user['user-id']):
                     guesser = participant
-        except Streamer.DoesNotExist: #pylint: disable=no-member
+        if guesser is None:
+            self.database['streamer'].reload()
             participant = Participant(
                 username=user['username'],
                 user_id=user['user-id'],
@@ -384,12 +382,10 @@ class GuessingGame():
                 total_points=0)
             self.database['streamer'].participants.append(participant)
             self.database['streamer'].save()
-            streamer = Streamer.objects.get( #pylint: disable=no-member
-                channel_id=self.database['channel-id'], participants__user_id=user['user-id'])
-            for participant in streamer.participants:
+            for participant in self.database['streamer'].participants:
                 if participant.user_id == int(user['user-id']):
                     guesser = participant
-            self.logger.error(
+            self.logger.info(
                 'Participant with ID %s does not exist in the database. Creating participant.',
                 user['user-id'])
         if len(command) > 2:
