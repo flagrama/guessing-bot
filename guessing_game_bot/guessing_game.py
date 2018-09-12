@@ -91,9 +91,9 @@ class GuessingGameBot():
             }
         }
 # TODO: Grab from database instead of hardcoding
-        self.state['modes'] += [Mode('keysanity', ['Boss Key'])]
-        self.state['modes'] += [Mode('egg', ['Child Trade'])]
-        self.state['modes'] += [Mode('ocarina', ['Ocarina'])]
+        self.state['modes'] += [Mode('keysanity', 'Boss Key')]
+        self.state['modes'] += [Mode('egg', 'Child Trade')]
+        self.state['modes'] += [Mode('ocarina', 'Ocarina')]
         blacklist = ['Keys', 'Treasures', 'Skulls', 'Tokens', 'Prize',
                      'Label', 'Badge', 'Heart', 'Medal']
         self.guessables = Guessable(
@@ -101,7 +101,7 @@ class GuessingGameBot():
         songs = []
         for key in self.guessables.get_extra_items('songs').keys():
             songs += [key]
-        self.guessables.modes += [Mode('songsanity', songs)]
+        self.guessables.modes += [Mode('songsanity', *songs)]
         self.guessing_game = GuessingGame(self.guessables)
         for guessable in self.guessables.extra_item_types:
             self.guesses[guessable] = deque()

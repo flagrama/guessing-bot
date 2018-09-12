@@ -3,7 +3,6 @@ class Mode():
         self.name = name
         self.items = []
         for item in items:
-            for item_name in item:
-                self.items += [item_name]
+            self.items += [item]
         if not self.items:
             raise ValueError('mode must have items associated')
