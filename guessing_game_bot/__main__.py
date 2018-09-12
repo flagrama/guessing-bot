@@ -2,7 +2,7 @@
 import argparse
 
 from . import settings
-from . import bot
+from .twitch_bot import TwitchBot
 
 def main():
     """The Main function of the bot. Starts the IRC bot."""
@@ -13,7 +13,7 @@ def main():
     settings.DEBUG = args.debug
     logger = settings.init_logger(__name__)
     try:
-        client = bot.TwitchBot()
+        client = TwitchBot()
         client.start()
     except KeyboardInterrupt:
         print('')

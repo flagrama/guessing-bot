@@ -21,7 +21,18 @@ class GuessingGameBot():
     """This is a class for running a guessing game."""
     def __init__(self, streamer):
         """The constructor for GuessingGame class."""
-        self.logger = settings.init_logger(__name__)
+        self.__name = streamer.name
+        self.__channel_id = streamer.channel_id
+        #self.__access_list = AccessList(streamer.whitelist, streamer.blacklist)
+        self.__participants = streamer.participants
+        self.logger = settings.init_logger('%s::%s' % (__name__, self.__channel_id))
+        # self.__guessing_game = GuessingGame(
+        #     streamer.guessables,
+        #     streamer.modes,
+        #     streamer.multi_guess
+        # )
+
+
         self.guesses = {}
         self.guesses['items'] = deque()
         self.state = {
@@ -102,7 +113,11 @@ class GuessingGameBot():
         for key in self.guessables.get_extra_items('songs').keys():
             songs += [key]
         self.guessables.modes += [Mode('songsanity', *songs)]
-        self.guessing_game = GuessingGame(self.guessables)
+        # self.__guessing_game = GuessingGame(
+        #     self.guessables,
+        #     self.state['modes'].modes,
+        #     self.state['guessables']
+        # )
         for guessable in self.guessables.extra_item_types:
             self.guesses[guessable] = deque()
 # End Region
