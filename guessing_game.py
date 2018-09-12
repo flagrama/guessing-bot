@@ -371,8 +371,8 @@ class GuessingGame():
     def _guess_command(self, command, user):
         guesser = None
         for participant in self.database['streamer'].participants:
-                if participant.user_id == int(user['user-id']):
-                    guesser = participant
+            if participant.user_id == int(user['user-id']):
+                guesser = participant
         if guesser is None:
             self.database['streamer'].reload()
             participant = Participant(
@@ -478,7 +478,6 @@ class GuessingGame():
         bucket = amazon_s3.Bucket(os.environ('S3_BUCKET'))
         bucket.upload_file(file, str(datetime.now()) + '.csv', ExtraArgs={'ACL':'public-read'})
 
-    # TODO: Fix this mess for setting the freebie medal
     def _hud_command(self, command):
         if len(command) > 1:
             subcommand_name = command[1]
@@ -487,10 +486,6 @@ class GuessingGame():
         if not self.state['running']:
             self.logger.info('Guessing game not running')
             return None
-        if len(command) > 1:
-            subcommand_name = command[1]
-            if subcommand_name in self.guessables['medals']:
-                return self._complete_medal_guess(command[1:])
         command_value = command[1].lower()
         item = self._parse_item(command_value)
         return self._complete_guess(item)
@@ -506,11 +501,11 @@ class GuessingGame():
 
     def _complete_medal_guess(self, command):
         if len(command) < 2:
+            self.logger.info('Not enough arguments for medal')
             return None
-        if command[1] not in self.guessables['dungeons']:
-            if not self.state['running'] and command[1] == 'free':
-                self.state['freebie'] = command[0]
-                self.logger.info('Medal %s set to freebie', command[0])
+        if command[1] not in self.guessables['dungeons'] and command[1] == 'free':
+            self.state['freebie'] = command[0]
+            self.logger.info('Medal %s set to freebie', command[0])
             return None
         if command[0] in self.guessables['medals']:
             if command[0] in self.state['medals']:
@@ -522,40 +517,37 @@ class GuessingGame():
             self.logger.info('Medal %s set to dungeon %s', command[0], command[1])
         if ((self.state['freebie'] and len(self.state['medals']) == 5)
                 or len(self.state['medals']) == 6):
-            local_guesses = deque()
-            hiscore = 0
+            freebie = False
+            if self.state['freebie']:
+                freebie = True
             for guess in self.guesses['medal']:
                 count = 0
                 for final in self.state['medals']:
                     if guess[final] == self.state['medals'][final]:
                         count += 1
-                localguess = {
-                    "user-id": guess['user-id'], "username": guess['username'], "correct": count
-                    }
-                local_guesses.append(localguess)
-                if count > hiscore:
-                    hiscore = count
-            if hiscore < 1:
-                return None
-            for guesser in local_guesses:
-                if guesser['correct'] < hiscore:
-                    continue
-                try:
-                    streamer = Streamer.objects.get( #pylint: disable=no-member
-                        channel_id=self.database['channel-id'],
-                        participants__user_id=guesser['user-id'])
-                except Streamer.DoesNotExist: #pylint: disable=no-member
-                    self.logger.error('Participant with ID %s does not exist in the database',
-                                      guesser['user-id'])
-                    return "User %s does not exist." % guesser['username']
-                for update_participant in streamer.participants:
-                    if update_participant.user_id == int(guesser['user-id']):
-                        update_participant.session_points += hiscore
-                        update_participant.total_points += hiscore
-                self.logger.info('User %s guessed correctly and earned %s points',
-                                 guesser['username'], hiscore)
-                streamer.save()
-                streamer.reload()
+                Streamer.objects.filter( #pylint: disable=no-member
+                    channel_id=self.database['streamer'].channel_id,
+                    participants__user_id=guess['user-id']).modify(
+                        inc__participants__S__session_points=
+                        self.database['streamer'].points * count,
+                        inc__participants__S__total_points=
+                        self.database['streamer'].points * count)
+                self.logger.info('User %s guessed %s medals correctly and \
+                                 earned %s points',
+                                 guess['username'], count,
+                                 self.database['streamer'].points * count)
+                if ((count == 5 and freebie) or (count == 6)):
+                    Streamer.objects.filter( #pylint: disable=no-member
+                        channel_id=self.database['streamer'].channel_id,
+                        participants__user_id=guess['user-id']).update(
+                            inc__participants__S__session_points=
+                            self.database['streamer'].first_bonus,
+                            inc__participants__S__total_points=
+                            self.database['streamer'].first_bonus)
+                    self.logger.info('User %s guessed all medals correctly and \
+                                      earned %s bonus points',
+                                     guess['username'], self.database['streamer'].first_bonus)
+                self.database['streamer'].save()
                 self.guesses['medal'] = deque()
                 self.logger.info('Medal guesses completed')
 
@@ -576,40 +568,34 @@ class GuessingGame():
             self.state['songs'][new_song] = new_location
             self.logger.info('Song %s set to location %s', new_song, new_location)
         if len(self.state['songs']) == 12:
-            local_guesses = deque()
-            hiscore = 0
-            for guess in self.guesses['song']:
+            for guess in self.guesses['songs']:
                 count = 0
                 for final in self.state['songs']:
                     if guess[final] == self.state['songs'][final]:
                         count += 1
-                localguess = {
-                    "user-id": guess['user-id'], "username": guess['username'], "correct": count
-                    }
-                local_guesses.append(localguess)
-                if count > hiscore:
-                    hiscore = count
-            if hiscore < 1:
-                return None
-            for guesser in local_guesses:
-                if guesser['correct'] < hiscore:
-                    continue
-                try:
-                    streamer = Streamer.objects.get( #pylint: disable=no-member
-                        channel_id=self.database['channel-id'],
-                        participants__user_id=guesser['user-id'])
-                except Streamer.DoesNotExist: #pylint: disable=no-member
-                    self.logger.error('Participant with ID %s does not exist in the database',
-                                      guesser['user-id'])
-                    return "User %s does not exist." % guesser['username']
-                for update_participant in streamer.participants:
-                    if update_participant.user_id == int(guesser['user-id']):
-                        update_participant.session_points += hiscore
-                        update_participant.total_points += hiscore
-                self.logger.info('User %s guessed correctly and earned %s points',
-                                 guesser['username'], hiscore)
-                streamer.save()
-                streamer.reload()
+                Streamer.objects.filter( #pylint: disable=no-member
+                    channel_id=self.database['streamer'].channel_id,
+                    participants__user_id=guess['user-id']).modify(
+                        inc__participants__S__session_points=
+                        self.database['streamer'].points * count,
+                        inc__participants__S__total_points=
+                        self.database['streamer'].points * count)
+                self.logger.info('User %s guessed %s songs correctly and \
+                                 earned %s points',
+                                 guess['username'], count,
+                                 self.database['streamer'].points * count)
+                if count == 12:
+                    Streamer.objects.filter( #pylint: disable=no-member
+                        channel_id=self.database['streamer'].channel_id,
+                        participants__user_id=guess['user-id']).update(
+                            inc__participants__S__session_points=
+                            self.database['streamer'].first_bonus,
+                            inc__participants__S__total_points=
+                            self.database['streamer'].first_bonus)
+                    self.logger.info('User %s guessed all songs correctly and \
+                                      earned %s bonus points',
+                                     guess['username'], self.database['streamer'].first_bonus)
+                self.database['streamer'].save()
                 self.guesses['song'] = deque()
                 self.logger.info('Song guesses completed')
 
@@ -636,13 +622,11 @@ class GuessingGame():
         self.state['medals'].clear()
         self.database['streamer'].sessions.append(self.database['current-session'])
         self.database['streamer'].save()
-        self.database['streamer'].reload()
         self.database['latest-session'] = self.database['current-session']
         self.database['current-session'] = Session()
         for participant in self.database['streamer'].participants:
             participant.session_points = 0
         self.database['streamer'].save()
-        self.database['streamer'].reload()
         filename = str(datetime.now()).replace(':', '_')
         file = os.path.join(os.path.curdir, 'reports', filename + '.csv')
         amazon_s3 = boto3.resource('s3')
