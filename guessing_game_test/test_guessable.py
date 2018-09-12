@@ -1,13 +1,14 @@
+import os
 from unittest import TestCase
 import jstyleson
-from Guessable import Guessable as GuessableClass
-from mode import Mode
-import jstyleson
+from guessing_game_bot.guessable import Guessable as GuessableClass
+from guessing_game_bot.mode import Mode
 
 class GuessableTest(TestCase):
     def __init__(self, methodName):
         TestCase.__init__(self, methodName)
-        with open('items.test.json') as items:
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'items.test.json')
+        with open(path) as items:
             self.json = jstyleson.load(items)
 
     def test_empty_properties(self):

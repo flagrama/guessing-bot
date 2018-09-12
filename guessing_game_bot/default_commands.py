@@ -1,7 +1,7 @@
 """Contains the functions and classes of the bot's basic commands."""
 from functools import partial
-import custom_commands
-import settings
+from . import custom_commands
+from . import settings
 
 def add_command(bot, command):
     """Adds a custom command to the database."""

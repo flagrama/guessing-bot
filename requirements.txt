@@ -4,3 +4,4 @@ Flask==1.0.2
 irc==16.4
 jstyleson==0.0.2
 mongoengine==0.15.3
+gunicorn==19.9.0

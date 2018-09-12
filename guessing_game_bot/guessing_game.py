@@ -9,13 +9,13 @@ import csv
 import boto3
 import jstyleson
 
-from database import DbStreamer, Session, Participant
-from mode import Mode
-from Guessable import Guessable
-from game import GuessingGame
-import guessing
-import whitelist_commands
-import settings
+from .database import DbStreamer, Session, Participant
+from .mode import Mode
+from .game import GuessingGame
+from . import guessing
+from . import whitelist_commands
+from .guessable import Guessable
+from . import settings
 
 class GuessingGameBot():
     """This is a class for running a guessing game."""
@@ -155,7 +155,8 @@ class GuessingGameBot():
         if self.state['running']:
             self.logger.info('Guessing game already running')
             return None
-        with open('items.json') as items:
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'items.json')
+        with open(path) as items:
             self.guessables.items = (jstyleson.load(items), self.state['mode'])
         self.state['running'] = True
         message = 'Guessing game started by %s' % user['username']
@@ -350,11 +351,11 @@ class GuessingGameBot():
                     self.state['database']['streamer'],
                     self.state['database']['channel-id']
                     )
-            for medal in self.guessables.medals:
+            for medal in self.guessables.medals: #pylint: disable=no-member
                 print(medal)
                 print(subcommand_name)
-                print(self.guessables.medals[medal])
-                if subcommand_name in self.guessables.medals[medal]:
+                print(self.guessables.medals[medal]) #pylint: disable=no-member
+                if subcommand_name in self.guessables.medals[medal]: #pylint: disable=no-member
                     return guessing.complete_medal_guess(self, command[1:])
         if not self.state['running']:
             self.logger.info('Guessing game not running')
@@ -421,7 +422,7 @@ class GuessingGameBot():
 
     def parse_songs(self, songcode):
         """Searches for a song with the value of songcode in its codes entry."""
-        for name, codes in self.guessables.songs.items():
+        for name, codes in self.guessables.songs.items(): #pylint: disable=no-member
             if songcode in codes:
                 return name
         return None

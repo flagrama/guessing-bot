@@ -4,8 +4,8 @@ from collections import deque, OrderedDict
 
 import jstyleson
 
-from database import DbStreamer, SessionLogEntry
-import settings
+from . import settings
+from .database import DbStreamer, SessionLogEntry
 
 def _remove_stale_guesses(guess_queue, username):
     new_queue = deque()

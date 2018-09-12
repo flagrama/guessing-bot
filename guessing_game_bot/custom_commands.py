@@ -1,5 +1,5 @@
 """Stores functions for managing custom commands."""
-from database import Command, DbStreamer
+from .database import Command, DbStreamer
 
 def add_command(streamer, name, output):
     """Adds a custom command to the database."""

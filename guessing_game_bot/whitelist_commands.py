@@ -1,10 +1,11 @@
 """This moudle contains the functions for managing the streamer's whitelist and blacklist."""
+import os
 from functools import partial
 import mongoengine
 
-from database import DbStreamer, BlacklistUser, WhitelistUser
-import twitch
-import settings
+from .database import DbStreamer, BlacklistUser, WhitelistUser
+from . import settings
+from .twitch import TwitchAPI
 
 def _get_username_from_command(command):
     try:
@@ -12,6 +13,10 @@ def _get_username_from_command(command):
         return username
     except IndexError:
         return False
+
+def _get_user_id_from_twitch(username):
+    twitch = TwitchAPI(os.environ['TWITCH_CLIENT_ID'])
+    return twitch.get_user_id(username)
 
 def _add_whitelist_command(command, streamer, channel_id):
     logger = settings.init_logger(__name__)
@@ -22,7 +27,7 @@ def _add_whitelist_command(command, streamer, channel_id):
         logger.error('Username not provided')
         return message
 
-    new_user_id = twitch.get_user_id(username)
+    new_user_id = _get_user_id_from_twitch(username)
     if not new_user_id:
         return message
 
@@ -56,7 +61,7 @@ def _remove_whitelist_command(command, streamer, channel_id):
         logger.error('Username not provided')
         return message
 
-    existing_user_id = twitch.get_user_id(username)
+    existing_user_id = _get_user_id_from_twitch(username)
     if not existing_user_id:
         return message
 
@@ -86,7 +91,7 @@ def _add_blacklist_command(command, streamer, channel_id):
         logger.error('Username not provided')
         return message
 
-    new_user_id = twitch.get_user_id(username)
+    new_user_id = _get_user_id_from_twitch(username)
     if not new_user_id:
         return message
 
@@ -121,7 +126,7 @@ def _remove_blacklist_command(command, streamer, channel_id):
         logger.error('Username not provided')
         return message
 
-    existing_user_id = twitch.get_user_id(username)
+    existing_user_id = _get_user_id_from_twitch(username)
     if not existing_user_id:
         return message
 

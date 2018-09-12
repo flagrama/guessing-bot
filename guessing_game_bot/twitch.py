@@ -1,7 +1,7 @@
 """Holds Twitch API class."""
 import requests
 
-import settings
+from . import settings
 
 class TwitchAPI():
     """A class for interacting with the Twitch API."""

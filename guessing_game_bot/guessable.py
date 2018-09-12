@@ -1,9 +1,11 @@
-import settings
-from mode import Mode
+from .mode import Mode
+from . import settings
 
 class Guessable():
     def __init__(self, *blacklist, modes, extra):
         self.logger = settings.init_logger(__name__)
+        self.__items = None
+        self.__modes = None
         self.items = ([],[])
         self.modes = modes
         if not isinstance(extra, dict):
@@ -62,7 +64,7 @@ class Guessable():
         return True
 
     def get_item(self, guess):
-        for name, codes in self.items.items():
+        for name, codes in self.__items.items():
             if guess in codes:
                 self.logger.debug('Item %s found', name)
                 return name

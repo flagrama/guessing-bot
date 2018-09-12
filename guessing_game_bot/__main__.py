@@ -1,8 +1,8 @@
 """The module that starts the IRC chat bot."""
 import argparse
 
-import settings
-import bot
+from . import settings
+from . import bot
 
 def main():
     """The Main function of the bot. Starts the IRC bot."""

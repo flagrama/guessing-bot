@@ -4,11 +4,11 @@ import os
 import irc.bot
 import mongoengine
 
-from database import DbStreamer
-import settings
-from twitch import TwitchAPI
-import default_commands
-import guessing_game
+from .database import DbStreamer
+from .twitch import TwitchAPI
+from . import default_commands
+from . import guessing_game
+from . import settings
 
 class TwitchBot(irc.bot.SingleServerIRCBot):
     """An IRC bot for connecting to Twitch chat servers."""
