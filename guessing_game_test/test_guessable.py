@@ -114,7 +114,7 @@ class GuessableTest(TestCase):
         blacklist = []
         mode_name = 'egg'
         mode_items = ['Child Trade']
-        mode = Mode(mode_name, mode_items)
+        mode = Mode(mode_name, *mode_items)
         modes = [mode]
         active_modes = []
         extra = {}
@@ -212,7 +212,7 @@ class GuessableTest(TestCase):
                      'Label', 'Badge', 'Heart', 'Medal']
         mode_name = 'egg'
         mode_items = ['Child Trade']
-        mode = Mode(mode_name, mode_items)
+        mode = Mode(mode_name, *mode_items)
         modes = [mode]
         active_modes = []
         extra = {}
