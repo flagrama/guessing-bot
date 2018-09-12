@@ -6,7 +6,7 @@ class Guessable():
         self.logger = settings.init_logger(__name__)
         self.__items = None
         self.__modes = None
-        self.items = ([],[])
+        self.items = ([], [])
         self.modes = modes
         if not isinstance(extra, dict):
             raise TypeError("extra must be set to a dict")

@@ -241,14 +241,11 @@ class GuessingGameBot():
 
     def guess_command(self, guessing_game, command, user):
         guesser = None
-        try:
-            streamer = DbStreamer.objects.get( #pylint: disable=no-member
-                channel_id=guessing_game.state['database']['channel-id'],
-                participants__user_id=user['user-id'])
-            for participant in streamer.participants:
-                if participant.user_id == int(user['user-id']):
-                    guesser = participant
-        except DbStreamer.DoesNotExist: #pylint: disable=no-member
+        for participant in guessing_game.state['database']['streamer'].participants:
+            if participant.user_id == int(user['user-id']):
+                guesser = participant
+        if guesser is None:
+            guessing_game.state['database']['streamer'].reload()
             participant = Participant(
                 username=user['username'],
                 user_id=user['user-id'],
@@ -256,14 +253,10 @@ class GuessingGameBot():
                 total_points=0)
             guessing_game.state['database']['streamer'].participants.append(participant)
             guessing_game.state['database']['streamer'].save()
-            guessing_game.state['database']['streamer'].reload()
-            streamer = DbStreamer.objects.get( #pylint: disable=no-member
-                channel_id=guessing_game.state['database']['channel-id'],
-                participants__user_id=user['user-id'])
-            for participant in streamer.participants:
+            for participant in guessing_game.state['streamer'].participants:
                 if participant.user_id == int(user['user-id']):
                     guesser = participant
-            guessing_game.logger.error(
+            guessing_game.logger.info(
                 'Participant with ID %s does not exist in the database. Creating participant.',
                 user['user-id'])
         if len(command) > 2:
@@ -352,9 +345,6 @@ class GuessingGameBot():
                     self.state['database']['channel-id']
                     )
             for medal in self.guessables.medals: #pylint: disable=no-member
-                print(medal)
-                print(subcommand_name)
-                print(self.guessables.medals[medal]) #pylint: disable=no-member
                 if subcommand_name in self.guessables.medals[medal]: #pylint: disable=no-member
                     return guessing.complete_medal_guess(self, command[1:])
         if not self.state['running']:

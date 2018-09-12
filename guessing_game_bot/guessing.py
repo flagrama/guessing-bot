@@ -201,40 +201,38 @@ def complete_medal_guess(guessing_game, command):
         guessing_game.logger.debug(guessing_game.state['medals'])
     if len(guessing_game.state['medals']) == 6:
         guessing_game.logger.info('Completing medal guesses')
-        local_guesses = deque()
-        hiscore = 0
+        freebie = False
         for guess in guessing_game.guesses['medals']:
             count = 0
             for final in guessing_game.state['medals']:
+                if guess[final] == 'Freebie':
+                    freebie = True
                 if guess[final] == guessing_game.state['medals'][final]:
                     count += 1
-            localguess = {
-                "user-id": guess['user-id'], "username": guess['username'], "correct": count
-                }
-            local_guesses.append(localguess)
-            if count > hiscore:
-                hiscore = count
-        if hiscore < 1:
-            return None
-        for guesser in local_guesses:
-            if guesser['correct'] < hiscore:
-                continue
-            try:
-                streamer = DbStreamer.objects.get( #pylint: disable=no-member
-                    channel_id=guessing_game.state['database']['channel-id'],
-                    participants__user_id=guesser['user-id'])
-            except DbStreamer.DoesNotExist: #pylint: disable=no-member
-                guessing_game.logger.error('Participant with ID %s does not exist in the database',
-                                           guesser['user-id'])
-                return "User %s does not exist." % guesser['username']
-            for update_participant in streamer.participants:
-                if update_participant.user_id == int(guesser['user-id']):
-                    update_participant.session_points += hiscore
-                    update_participant.total_points += hiscore
-            guessing_game.logger.info('User %s guessed correctly and earned %s points',
-                                      guesser['username'], hiscore)
-            streamer.save()
-            streamer.reload()
+            DbStreamer.objects.filter( #pylint: disable=no-member
+                channel_id=guessing_game['database']['streamer'].channel_id,
+                participants__user_id=guess['user-id']).modify(
+                    inc__participants__S__session_points=
+                    guessing_game['database']['streamer'].points * count,
+                    inc__participants__S__total_points=
+                    guessing_game['database']['streamer'].points * count)
+            guessing_game.logger.info('User %s guessed %s medals correctly and \
+                                earned %s points',
+                                      guess['username'], count,
+                                      guessing_game['database']['streamer'].points * count)
+            if ((count == 5 and freebie) or (count == 6)):
+                DbStreamer.objects.filter( #pylint: disable=no-member
+                    channel_id=guessing_game['database']['streamer'].channel_id,
+                    participants__user_id=guess['user-id']).update(
+                        inc__participants__S__session_points=
+                        guessing_game['database']['streamer'].first_bonus,
+                        inc__participants__S__total_points=
+                        guessing_game['database']['streamer'].first_bonus)
+                guessing_game.logger.info('User %s guessed all medals correctly and \
+                                    earned %s bonus points',
+                                          guess['username'],
+                                          guessing_game['database']['streamer'].first_bonus)
+            guessing_game['database']['streamer'].save()
             guessing_game.guesses['medals'] = deque()
             message = 'Medal guesses completed'
             guessing_game.logger.info(message)
