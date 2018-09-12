@@ -1,4 +1,5 @@
 from .mode import Mode
+from .extra_guessable import ExtraGuessable
 from . import settings
 
 class Guessable():
@@ -8,18 +9,19 @@ class Guessable():
         self.__modes = None
         self.items = ([], [])
         self.modes = modes
+        self.extras = []
+        self.extra_item_types = []
         if not isinstance(extra, dict):
             raise TypeError("extra must be set to a dict")
         self.blacklist = []
-        self.types = []
         for item in blacklist:
             if item:
                 self.blacklist += [item]
         self.logger.debug('Blacklist set')
-        for key, value in extra.items():
-            self.types += [key]
-            setattr(self, key, value)
-        self.logger.debug('Extras set')
+        for key in extra:
+            self.extras += [ExtraGuessable(key, extra[key])]
+            self.extra_item_types += [key]
+        self.logger.debug('Extra items set')
 
     @property
     def modes(self):
@@ -50,6 +52,12 @@ class Guessable():
         else:
             self.__items = self.parse_items(items, modes)
             self.logger.debug('Items set')
+
+    def get_extra_items(self, extra_items_type):
+        for extra_items in self.extras:
+            if extra_items_type == extra_items.get_type():
+                return extra_items.get_items()
+        return None
 
     def _check_item_allowed(self, item, modes):
         if self.blacklist:

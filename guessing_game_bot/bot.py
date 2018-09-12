@@ -73,7 +73,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
             self.logger.debug('Creating new entry for streamer with ID %s',
                               self.config['channel_id'])
             self.streamer = DbStreamer(name=self.config['channel_name'],
-                                     channel_id=self.config['channel_id'])
+                                       channel_id=self.config['channel_id'])
             self.streamer.save()
 
         for command in self.streamer.commands:

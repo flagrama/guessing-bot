@@ -18,6 +18,51 @@ def _remove_stale_guesses(guess_queue, username):
         new_queue.append(guess)
     return new_queue
 
+def do_extra_guess(user, locations, item_type, participant, guessing_game):
+    """Adds a participant's extra guess to the queue and creates a session log entry."""
+    logger = settings.init_logger(__name__)
+    now = datetime.now()
+    for extra_items in guessing_game.guessables.extras:
+        if not item_type == extra_items.get_type():
+            continue
+        for location in locations:
+            if not extra_items.get_location(location):
+                logger.debug('%s is not a valid item for %s guess', location, item_type)
+                return
+        guessing_game.guesses[item_type] = _remove_stale_guesses(
+            guessing_game.guesses[item_type], user['username']
+        )
+        extra_guess = OrderedDict()
+        for item in extra_items.get_items():
+            extra_guess[item] = None
+        i = 0
+        for extra in extra_guess:
+            guess = locations[i]
+            if not any(guess in s for s in extra_items.get_locations().values()):
+                logger.info('Invalid location %s', guess)
+                return
+            extra_guess[extra] = extra_items.get_location(guess)
+            if i >= len(extra_guess):
+                break
+            i += 1
+        guess = SessionLogEntry(
+            timestamp=now,
+            participant=participant.user_id,
+            participant_name=participant.username,
+            guess_type=item_type,
+            guess=jstyleson.dumps(extra_guess).replace(',', '\n'),
+            session_points=participant.session_points,
+            total_points=participant.total_points
+        )
+        extra_guess['user-id'] = user['user-id']
+        extra_guess['username'] = user['username']
+        extra_guess['timestamp'] = now
+        guessing_game.guesses[item_type].append(extra_guess)
+        guessing_game.state['database']['current-session'].guesses.append(guess)
+        logger.debug('Extra Item Guess: %s', extra_guess)
+        return
+    logger.info("Extra item type %s does not exist", item_type)
+
 def do_item_guess(user, item, participant, guessing_game):
     """Adds a participant's item guess to the queue and creates a session log entry."""
     logger = settings.init_logger(__name__)
@@ -45,93 +90,6 @@ def do_item_guess(user, item, participant, guessing_game):
     guessing_game.state['database']['current-session'].guesses.append(guess)
     logger.info('%s Item %s guessed by user %s', now, item, user['username'])
     logger.debug(item_guess)
-
-def do_medal_guess(user, medals, participant, guessing_game):
-    """Adds a participant's medal guess to the queue and creates a session log entry."""
-    logger = settings.init_logger(__name__)
-    if len(medals) < 5 or len(medals) < 6 and not guessing_game.state['freebie']:
-        logger.info('Medal command incomplete')
-        logger.debug(medals)
-        return
-    guessing_game.guesses['medals'] = _remove_stale_guesses(
-        guessing_game.guesses['medals'], user['username'])
-    medal_guess = OrderedDict()
-    medal_guess["Forest Medallion"] = None
-    medal_guess["Fire Medallion"] = None
-    medal_guess["Water Medallion"] = None
-    medal_guess["Spirit Medallion"] = None
-    medal_guess["Shadow Medallion"] = None
-    medal_guess["Light Medallion"] = None
-    i = 0
-    for medal in medal_guess:
-        guess = medals[i]
-        if not any(guess in s for s in guessing_game.state['guessables']['dungeons'].values()):
-            logger.info('Invalid dungeon %s', guess)
-            return
-        medal_guess[medal] = _get_dungeon_name(guess, guessing_game)
-        i += 1
-    guess = SessionLogEntry(
-        timestamp=datetime.now(),
-        participant=participant.user_id,
-        participant_name=participant.username,
-        guess_type="Medal",
-        guess=jstyleson.dumps(medal_guess).replace(',', '\n'),
-        session_points=participant.session_points,
-        total_points=participant.total_points
-    )
-    medal_guess['user-id'] = user['user-id']
-    medal_guess['username'] = user['username']
-    medal_guess['timestamp'] = datetime.now()
-    guessing_game.guesses['medals'].append(medal_guess)
-    guessing_game.state['database']['current-session'].guesses.append(guess)
-    logger.debug('Medal Guess: %s', medal_guess)
-
-def do_song_guess(user, songs, participant, guessing_game):
-    """Adds a participant's song guess to the queue and creates a session log entry."""
-    logger = settings.init_logger(__name__)
-    if len(songs) < 12:
-        logger.info('song command incomplete')
-        logger.debug(songs)
-        return
-    guessing_game.guesses['songs'] = _remove_stale_guesses(
-        guessing_game.guesses['songs'], user['username'])
-    song_guess = OrderedDict()
-    song_guess["Zelda's Lullaby"] = None
-    song_guess["Epona's Song"] = None
-    song_guess["Saria's Song"] = None
-    song_guess["Sun's Song"] = None
-    song_guess["Song of Time"] = None
-    song_guess["Song of Storms"] = None
-    song_guess["Minuet of Forest"] = None
-    song_guess["Bolero of Fire"] = None
-    song_guess["Serenade of Water"] = None
-    song_guess["Requiem of Spirit"] = None
-    song_guess["Nocturne of Shadow"] = None
-    song_guess["Prelude of Light"] = None
-    i = 0
-    for song in song_guess:
-        guess = songs[i]
-        songname = guessing_game.parse_songs(guess)
-        if not songname:
-            logger.info('Invalid song %s', guess)
-            return
-        song_guess[song] = songname
-        i += 1
-    guess = SessionLogEntry(
-        timestamp=datetime.now(),
-        participant=participant.user_id,
-        participant_name=participant.username,
-        guess_type="Song",
-        guess=jstyleson.dumps(song_guess).replace(',', '\n'),
-        session_points=participant.session_points,
-        total_points=participant.total_points
-    )
-    song_guess['user-id'] = user['user-id']
-    song_guess['username'] = user['username']
-    song_guess['timestamp'] = datetime.now()
-    guessing_game.guesses['songs'].append(song_guess)
-    guessing_game.state['database']['current-session'].guesses.append(guess)
-    logger.debug(song_guess)
 
 def complete_guess(guessing_game, item):
     """Completes Item guess."""
@@ -174,126 +132,63 @@ def complete_guess(guessing_game, item):
         guessing_game.guesses['items'] = new_guess_deque
         guessing_game.logger.info('Guesses completed')
 
-def _get_medal_name(code, guessing_game):
-    for name, codes in guessing_game.state['guessables']['medals'].items():
-        if code in codes:
-            return name
-    return None
-
-def _get_dungeon_name(code, guessing_game):
-    for name, codes in guessing_game.state['guessables']['dungeons'].items():
-        if code in codes:
-            return name
-    return None
-
-def complete_medal_guess(guessing_game, command):
-    """Completes Medal guess."""
-    if len(command) < 2:
-        guessing_game.logger.debug('Medal guess completion command too short')
-        return None
-    guessed_medal = command[0]
-    guessed_location = command[1]
-    guessing_game.logger.info('%s is at %s', guessed_medal, guessed_location)
-    this_medal = _get_medal_name(guessed_medal, guessing_game)
-    this_dungeon = _get_dungeon_name(guessed_location, guessing_game)
-    if this_medal and this_dungeon:
-        guessing_game.state['medals'][this_medal] = this_dungeon
-        guessing_game.logger.debug(guessing_game.state['medals'])
-    if len(guessing_game.state['medals']) == 6:
-        guessing_game.logger.info('Completing medal guesses')
-        freebie = False
-        for guess in guessing_game.guesses['medals']:
-            count = 0
-            for final in guessing_game.state['medals']:
-                if guess[final] == 'Freebie':
-                    freebie = True
-                if guess[final] == guessing_game.state['medals'][final]:
-                    count += 1
-            DbStreamer.objects.filter( #pylint: disable=no-member
-                channel_id=guessing_game['database']['streamer'].channel_id,
-                participants__user_id=guess['user-id']).modify(
-                    inc__participants__S__session_points=
-                    guessing_game['database']['streamer'].points * count,
-                    inc__participants__S__total_points=
-                    guessing_game['database']['streamer'].points * count)
-            guessing_game.logger.info('User %s guessed %s medals correctly and \
-                                earned %s points',
-                                      guess['username'], count,
-                                      guessing_game['database']['streamer'].points * count)
-            if ((count == 5 and freebie) or (count == 6)):
+def complete_extra_guess(guessing_game, command):
+    """Completes Extra Items guess."""
+    logger = settings.init_logger(__name__)
+    if len(command) < 3:
+        logger.info('Extra item guess completion command too short')
+        return
+    extra_items_type = command[0]
+    for extra_items in guessing_game.guessables.extras:
+        if not extra_items_type == extra_items.get_type():
+            continue
+        final_item = extra_items.get_item(command[1])
+        if not final_item:
+            logger.info("Extra item type %s does not have an item with code %s",
+                        extra_items_type, command[1])
+            return
+        final_location = extra_items.get_location(command[2])
+        if not final_location:
+            logger.info("Extra item type %s does not have a location with code %s",
+                        extra_items_type, command[2])
+            return
+        logger.info('%s is at %s', final_item, final_location)
+        guessing_game.state[extra_items_type][final_item] = final_location
+        guessing_game.logger.debug(guessing_game.state[extra_items_type])
+        if len(guessing_game.state[extra_items_type]) == extra_items.get_count():
+            logger.info("Completing %s guesses", extra_items_type)
+            for guess in guessing_game.guesses[extra_items_type]:
+                count = 0
+                for final in guessing_game.state[extra_items_type]:
+                    if guess[final] == guessing_game.state[extra_items_type][final]:
+                        count += 1
                 DbStreamer.objects.filter( #pylint: disable=no-member
-                    channel_id=guessing_game['database']['streamer'].channel_id,
-                    participants__user_id=guess['user-id']).update(
+                    channel_id=guessing_game.state['database']['streamer'].channel_id,
+                    participants__user_id=guess['user-id']).modify(
                         inc__participants__S__session_points=
-                        guessing_game['database']['streamer'].first_bonus,
+                        guessing_game.state['database']['streamer'].points * count,
                         inc__participants__S__total_points=
-                        guessing_game['database']['streamer'].first_bonus)
-                guessing_game.logger.info('User %s guessed all medals correctly and \
-                                    earned %s bonus points',
-                                          guess['username'],
-                                          guessing_game['database']['streamer'].first_bonus)
-            guessing_game['database']['streamer'].save()
-            guessing_game.guesses['medals'] = deque()
-            message = 'Medal guesses completed'
-            guessing_game.logger.info(message)
-            return message
-    return None
-
-def complete_song_guess(guessing_game, command):
-    """Completes Song guess."""
-    if len(command) < 2:
-        guessing_game.logger.info('Not enough arguments for song')
-        return None
-    new_song = guessing_game.parse_songs(command[0])
-    new_location = guessing_game.parse_songs(command[1])
-    if not new_song or not new_location:
-        return None
-    if new_song in guessing_game.state['guessables']['songs']:
-        if new_song in guessing_game.state['songs']:
-            guessing_game.logger.info('Song %s already in guesses', new_song)
-            if guessing_game.state['songs'][new_song] != new_location:
-                guessing_game.state['songs'][new_song] = new_location
-                guessing_game.logger.info('Song %s set to location %s', new_song, new_location)
+                        guessing_game.state['database']['streamer'].points * count)
+                guessing_game.logger.info(
+                    'User %s guessed %s medals correctly and earned %s points',
+                    guess['username'], count,
+                    guessing_game.state['database']['streamer'].points * count)
+                if count == extra_items.get_count():
+                    DbStreamer.objects.filter( #pylint: disable=no-member
+                        channel_id=guessing_game.state['database']['streamer'].channel_id,
+                        participants__user_id=guess['user-id']).update(
+                            inc__participants__S__session_points=
+                            guessing_game.state['database']['streamer'].first_bonus,
+                            inc__participants__S__total_points=
+                            guessing_game.state['database']['streamer'].first_bonus)
+                    guessing_game.logger.info(
+                        'User %s guessed all medals correctly and earned %s bonus points',
+                        guess['username'],
+                        guessing_game.state['database']['streamer'].first_bonus)
+                guessing_game.state['database']['streamer'].save()
+                guessing_game.guesses[extra_items_type] = deque()
+                message = '%s guesses completed' % extra_items_type
+                guessing_game.logger.info(message)
                 return
-        guessing_game.state['songs'][new_song] = new_location
-        guessing_game.logger.info('Song %s set to location %s', new_song, new_location)
-        guessing_game.logger.debug(guessing_game.state['songs'])
-    if len(guessing_game.state['songs']) == 12:
-        guessing_game.logger.info('Finishing song guesses')
-        local_guesses = deque()
-        hiscore = 0
-        for guess in guessing_game.guesses['songs']:
-            count = 0
-            for final in guessing_game.state['songs']:
-                if guess[final] == guessing_game.state['songs'][final]:
-                    count += 1
-            localguess = {
-                "user-id": guess['user-id'], "username": guess['username'], "correct": count
-                }
-            local_guesses.append(localguess)
-            if count > hiscore:
-                hiscore = count
-        if hiscore < 1:
-            return None
-        for guesser in local_guesses:
-            if guesser['correct'] < hiscore:
-                continue
-            try:
-                streamer = DbStreamer.objects.get( #pylint: disable=no-member
-                    channel_id=guessing_game.state['database']['channel-id'],
-                    participants__user_id=guesser['user-id'])
-            except DbStreamer.DoesNotExist: #pylint: disable=no-member
-                guessing_game.logger.error('Participant with ID %s does not exist in the database',
-                                           guesser['user-id'])
-                return "User %s does not exist." % guesser['username']
-            for update_participant in streamer.participants:
-                if update_participant.user_id == int(guesser['user-id']):
-                    update_participant.session_points += hiscore
-                    update_participant.total_points += hiscore
-            guessing_game.logger.info('User %s guessed correctly and earned %s points',
-                                      guesser['username'], hiscore)
-            streamer.save()
-            streamer.reload()
-            guessing_game.guesses['songs'] = deque()
-            guessing_game.logger.info('Song guesses completed')
-    return None
+        return
+    logger.info("Extra item type %s does not exist", extra_items_type)

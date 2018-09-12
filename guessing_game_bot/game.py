@@ -7,5 +7,5 @@ class GuessingGame():
         self.guesses = {
             "items": deque()
         }
-        for guessable in guessables.types:
+        for guessable in guessables.extra_item_types:
             self.guesses[guessable] = deque()

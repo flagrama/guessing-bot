@@ -22,51 +22,65 @@ class GuessingGameBot():
     def __init__(self, streamer):
         """The constructor for GuessingGame class."""
         self.logger = settings.init_logger(__name__)
-        self.guesses = {
-            "items": deque(),
-            "medal": deque(),
-            "song": deque()
-        }
+        self.guesses = {}
+        self.guesses['items'] = deque()
         self.state = {
             "running": False,
-            "freebie": None,
             "mode": [],
             "songs": {},
             "medals": {},
             "modes": [],
             "guessables": {
                 "medals": {
-                    "Forest Medallion": ['forest'],
-                    "Fire Medallion": ['fire'],
-                    "Water Medallion": ['water'],
-                    "Shadow Medallion": ['shadow'],
-                    "Spirit Medallion": ['spirit'],
-                    "Light Medallion": ['light']
-                },
-                "dungeons": {
-                    "Inside the Great Deku Tree": ['deku'],
-                    "Dodongo's Cavern": ['dodongo'],
-                    "Inside Jabu Jabu's Belly": ['jabu'],
-                    "Forest Temple": ['forest'],
-                    "Fire Temple": ['fire'],
-                    "Water Temple": ['water'],
-                    "Shadow Temple": ['shadow'],
-                    "Spirit Temple": ['spirit'],
-                    "Freebie": ['free']
+                    "items": {
+                        "Forest Medallion": ['forest'],
+                        "Fire Medallion": ['fire'],
+                        "Water Medallion": ['water'],
+                        "Shadow Medallion": ['shadow'],
+                        "Spirit Medallion": ['spirit'],
+                        "Light Medallion": ['light']
+                    },
+                    "locations": {
+                        "Inside the Great Deku Tree": ['deku'],
+                        "Dodongo's Cavern": ['dodongo'],
+                        "Inside Jabu Jabu's Belly": ['jabu'],
+                        "Forest Temple": ['forest'],
+                        "Fire Temple": ['fire'],
+                        "Water Temple": ['water'],
+                        "Shadow Temple": ['shadow'],
+                        "Spirit Temple": ['spirit'],
+                        "Freebie": ['free']
+                    }
                 },
                 "songs": {
-                    "Zelda's Lullaby": ['zl', 'lullaby', 'zeldas', 'zelda'],
-                    "Saria's Song": ['saria', 'sarias'],
-                    "Epona's Song": ['epona', 'eponas'],
-                    "Sun's Song": ['sunsong', 'sun', 'suns'],
-                    "Song of Time": ['songoftime', 'time', 'sot'],
-                    "Song of Storms": ['songofstorms', 'sos', 'storm', 'storms'],
-                    "Minuet of Forest": ['minuet', 'greennote', 'mof'],
-                    "Bolero of Fire": ['bolero', 'rednote', 'bof'],
-                    "Serenade of Water": ['serenade', 'bluenote', 'sow'],
-                    "Nocturne of Shadow": ['nocturne', 'purplenote', 'nos'],
-                    "Requiem of Spirit": ['requiem', 'orangenote', 'ros'],
-                    "Prelude of Light": ['prelude', 'yellownote', 'pol']
+                    "items": {
+                        "Zelda's Lullaby": ['zl', 'lullaby', 'zeldas', 'zelda'],
+                        "Saria's Song": ['saria', 'sarias'],
+                        "Epona's Song": ['epona', 'eponas'],
+                        "Sun's Song": ['sunsong', 'sun', 'suns'],
+                        "Song of Time": ['songoftime', 'time', 'sot'],
+                        "Song of Storms": ['songofstorms', 'sos', 'storm', 'storms'],
+                        "Minuet of Forest": ['minuet', 'greennote', 'mof'],
+                        "Bolero of Fire": ['bolero', 'rednote', 'bof'],
+                        "Serenade of Water": ['serenade', 'bluenote', 'sow'],
+                        "Nocturne of Shadow": ['nocturne', 'purplenote', 'nos'],
+                        "Requiem of Spirit": ['requiem', 'orangenote', 'ros'],
+                        "Prelude of Light": ['prelude', 'yellownote', 'pol']
+                    },
+                    "locations": {
+                        "Zelda's Lullaby": ['zl', 'lullaby', 'zeldas', 'zelda'],
+                        "Saria's Song": ['saria', 'sarias'],
+                        "Epona's Song": ['epona', 'eponas'],
+                        "Sun's Song": ['sunsong', 'sun', 'suns'],
+                        "Song of Time": ['songoftime', 'time', 'sot'],
+                        "Song of Storms": ['songofstorms', 'sos', 'storm', 'storms'],
+                        "Minuet of Forest": ['minuet', 'greennote', 'mof'],
+                        "Bolero of Fire": ['bolero', 'rednote', 'bof'],
+                        "Serenade of Water": ['serenade', 'bluenote', 'sow'],
+                        "Nocturne of Shadow": ['nocturne', 'purplenote', 'nos'],
+                        "Requiem of Spirit": ['requiem', 'orangenote', 'ros'],
+                        "Prelude of Light": ['prelude', 'yellownote', 'pol']
+                    }
                 }
             },
             "database": {
@@ -77,15 +91,20 @@ class GuessingGameBot():
             }
         }
 # TODO: Grab from database instead of hardcoding
-        self.state['modes'] += [Mode('keysanity', 'Boss Key')]
-        self.state['modes'] += [Mode('egg', 'Child Trade')]
-        self.state['modes'] += [Mode('ocarina', 'Ocarina')]
+        self.state['modes'] += [Mode('keysanity', ['Boss Key'])]
+        self.state['modes'] += [Mode('egg', ['Child Trade'])]
+        self.state['modes'] += [Mode('ocarina', ['Ocarina'])]
         blacklist = ['Keys', 'Treasures', 'Skulls', 'Tokens', 'Prize',
                      'Label', 'Badge', 'Heart', 'Medal']
         self.guessables = Guessable(
             *blacklist, modes=self.state['modes'], extra=self.state['guessables'])
-        self.guessables.modes += [Mode('songsanity', *getattr(self.guessables, 'songs'))]
+        songs = []
+        for key in self.guessables.get_extra_items('songs').keys():
+            songs += [key]
+        self.guessables.modes += [Mode('songsanity', songs)]
         self.guessing_game = GuessingGame(self.guessables)
+        for guessable in self.guessables.extra_item_types:
+            self.guesses[guessable] = deque()
 # End Region
         self.commands = {
             "whitelist": ['add', 'remove', 'ban', 'unban'],
@@ -101,7 +120,6 @@ class GuessingGameBot():
             },
             "mod_commands": {
                 '!hud': partial(self._hud_command),
-                '!song': partial(self._song_command),
                 '!report': partial(self._report_command)
             },
             "game_state_commands": {
@@ -167,11 +185,11 @@ class GuessingGameBot():
         if not self.state['running']:
             self.logger.info('Guessing game not running')
             return None
-        self.guesses['items'] = deque()
-        self.guesses['medals'] = deque()
-        self.guesses['songs'] = deque()
+        print(self.guesses)
+        for queues in self.guesses:
+            self.guesses[queues] = deque()
+        print(self.guesses)
         self.state['running'] = False
-        self.state['freebie'] = None
         self.state['mode'].clear()
         self.state['songs'].clear()
         self.state['medals'].clear()
@@ -259,15 +277,13 @@ class GuessingGameBot():
             guessing_game.logger.info(
                 'Participant with ID %s does not exist in the database. Creating participant.',
                 user['user-id'])
-        if len(command) > 2:
+        if len(command) > 2 and not guessing_game.state['running']:
             subcommand_name = command[1]
             command_value = command[2:]
-            if subcommand_name == 'medal':
-                guessing.do_medal_guess(user, command_value, guesser, guessing_game)
-                return
-            if subcommand_name == 'song':
-                guessing.do_song_guess(user, command_value, guesser, guessing_game)
-                return
+            self.logger.debug('Item type: %s, Location value: %s', subcommand_name, command_value)
+            if subcommand_name in self.guessables.extra_item_types:
+                guessing.do_extra_guess(user, command_value, subcommand_name,
+                                        guesser, guessing_game)
         if not guessing_game.state['running']:
             return
         command_value = command[1].lower()
@@ -344,9 +360,8 @@ class GuessingGameBot():
                     self.state['database']['streamer'],
                     self.state['database']['channel-id']
                     )
-            for medal in self.guessables.medals: #pylint: disable=no-member
-                if subcommand_name in self.guessables.medals[medal]: #pylint: disable=no-member
-                    return guessing.complete_medal_guess(self, command[1:])
+            if subcommand_name in self.guessables.extra_item_types:
+                return guessing.complete_extra_guess(self, command[1:])
         if not self.state['running']:
             self.logger.info('Guessing game not running')
             return None
@@ -355,16 +370,6 @@ class GuessingGameBot():
         if not item:
             self.logger.info('Item %s not found', command_value)
         return guessing.complete_guess(self, item)
-
-    def _song_command(self, command):
-        if not self.state['running']:
-            self.logger.info('Guessing game not running')
-            return None
-        if 'songsanity' in self.state['mode']:
-            return None
-        if len(command) > 1:
-            return guessing.complete_song_guess(self, command[1:])
-        return None
 
     def points_check(self, username):
         try:
@@ -409,10 +414,3 @@ class GuessingGameBot():
         bucket.upload_file(file, str(datetime.now()) + '.csv', ExtraArgs={'ACL':'public-read'})
 
     # Currently will assume !hud <item> is the Guess Completion command
-
-    def parse_songs(self, songcode):
-        """Searches for a song with the value of songcode in its codes entry."""
-        for name, codes in self.guessables.songs.items(): #pylint: disable=no-member
-            if songcode in codes:
-                return name
-        return None
