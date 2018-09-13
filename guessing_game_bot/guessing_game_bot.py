@@ -15,6 +15,7 @@ from .game import GuessingGame
 from . import guessing
 from . import whitelist_commands
 from .guessable import Guessable
+from .access_list import AccessList
 from . import settings
 
 class GuessingGameBot():
@@ -23,103 +24,25 @@ class GuessingGameBot():
         """The constructor for GuessingGame class."""
         self.__name = streamer.name
         self.__channel_id = streamer.channel_id
-        #self.__access_list = AccessList(streamer.whitelist, streamer.blacklist)
+        self.__access_list = AccessList(
+            self.__channel_id, streamer.whitelist, streamer.blacklist)
         self.__participants = streamer.participants
-        self.logger = settings.init_logger('%s::%s' % (__name__, self.__channel_id))
-        # self.__guessing_game = GuessingGame(
-        #     streamer.guessables,
-        #     streamer.modes,
-        #     streamer.multi_guess
-        # )
+        self.logger = settings.init_logger(__name__)
+        self.__guessing_game = GuessingGame(
+            streamer.guessables,
+            [], #streamer.modes,
+            streamer.multi_guess
+        )
 
-
-        self.guesses = {}
-        self.guesses['items'] = deque()
-        self.state = {
-            "running": False,
-            "mode": [],
-            "songs": {},
-            "medals": {},
-            "modes": [],
-            "guessables": {
-                "medals": {
-                    "items": {
-                        "Forest Medallion": ['forest'],
-                        "Fire Medallion": ['fire'],
-                        "Water Medallion": ['water'],
-                        "Shadow Medallion": ['shadow'],
-                        "Spirit Medallion": ['spirit'],
-                        "Light Medallion": ['light']
-                    },
-                    "locations": {
-                        "Inside the Great Deku Tree": ['deku'],
-                        "Dodongo's Cavern": ['dodongo'],
-                        "Inside Jabu Jabu's Belly": ['jabu'],
-                        "Forest Temple": ['forest'],
-                        "Fire Temple": ['fire'],
-                        "Water Temple": ['water'],
-                        "Shadow Temple": ['shadow'],
-                        "Spirit Temple": ['spirit'],
-                        "Freebie": ['free']
-                    }
-                },
-                "songs": {
-                    "items": {
-                        "Zelda's Lullaby": ['zl', 'lullaby', 'zeldas', 'zelda'],
-                        "Saria's Song": ['saria', 'sarias'],
-                        "Epona's Song": ['epona', 'eponas'],
-                        "Sun's Song": ['sunsong', 'sun', 'suns'],
-                        "Song of Time": ['songoftime', 'time', 'sot'],
-                        "Song of Storms": ['songofstorms', 'sos', 'storm', 'storms'],
-                        "Minuet of Forest": ['minuet', 'greennote', 'mof'],
-                        "Bolero of Fire": ['bolero', 'rednote', 'bof'],
-                        "Serenade of Water": ['serenade', 'bluenote', 'sow'],
-                        "Nocturne of Shadow": ['nocturne', 'purplenote', 'nos'],
-                        "Requiem of Spirit": ['requiem', 'orangenote', 'ros'],
-                        "Prelude of Light": ['prelude', 'yellownote', 'pol']
-                    },
-                    "locations": {
-                        "Zelda's Lullaby": ['zl', 'lullaby', 'zeldas', 'zelda'],
-                        "Saria's Song": ['saria', 'sarias'],
-                        "Epona's Song": ['epona', 'eponas'],
-                        "Sun's Song": ['sunsong', 'sun', 'suns'],
-                        "Song of Time": ['songoftime', 'time', 'sot'],
-                        "Song of Storms": ['songofstorms', 'sos', 'storm', 'storms'],
-                        "Minuet of Forest": ['minuet', 'greennote', 'mof'],
-                        "Bolero of Fire": ['bolero', 'rednote', 'bof'],
-                        "Serenade of Water": ['serenade', 'bluenote', 'sow'],
-                        "Nocturne of Shadow": ['nocturne', 'purplenote', 'nos'],
-                        "Requiem of Spirit": ['requiem', 'orangenote', 'ros'],
-                        "Prelude of Light": ['prelude', 'yellownote', 'pol']
-                    }
-                }
-            },
-            "database": {
-                "streamer": streamer,
-                "channel-id": streamer.channel_id,
-                "current-session": None,
-                "latest-session": None
-            }
-        }
 # TODO: Grab from database instead of hardcoding
-        self.state['modes'] += [Mode('keysanity', 'Boss Key')]
-        self.state['modes'] += [Mode('egg', 'Child Trade')]
-        self.state['modes'] += [Mode('ocarina', 'Ocarina')]
-        blacklist = ['Keys', 'Treasures', 'Skulls', 'Tokens', 'Prize',
-                     'Label', 'Badge', 'Heart', 'Medal']
-        self.guessables = Guessable(
-            *blacklist, modes=self.state['modes'], extra=self.state['guessables'])
-        songs = []
-        for key in self.guessables.get_extra_items('songs').keys():
-            songs += [key]
-        self.guessables.modes += [Mode('songsanity', *songs)]
+        # self.state['modes'] += [Mode('keysanity', 'Boss Key')]
+        # self.state['modes'] += [Mode('egg', 'Child Trade')]
+        # self.state['modes'] += [Mode('ocarina', 'Ocarina')]
         # self.__guessing_game = GuessingGame(
         #     self.guessables,
         #     self.state['modes'].modes,
         #     self.state['guessables']
         # )
-        for guessable in self.guessables.extra_item_types:
-            self.guesses[guessable] = deque()
 # End Region
         self.commands = {
             "whitelist": ['add', 'remove', 'ban', 'unban'],
@@ -142,7 +65,7 @@ class GuessingGameBot():
                 '!finish': partial(self._finish_command)
             }
         }
-        self.state['database']['latest-session'] = self._get_sessions()
+        #self.state['database']['latest-session'] = self._get_sessions()
 
     def _get_sessions(self):
         self.state['database']['current-session'] = Session()
@@ -151,7 +74,7 @@ class GuessingGameBot():
                 self.state['database']['streamer'].sessions) - 1]
         return None
 
-    def do_command(self, user, permissions, command):
+    def do_command(self, user, is_mod, command_name, command):
         """
         The function to parse a command.
 
@@ -165,23 +88,42 @@ class GuessingGameBot():
             no message is sent to chat.
         """
         try:
-            command_name = command[0]
             if command_name in self.commands['game_commands']:
                 return self.commands['game_commands'][command_name](self, command, user)
             if (command_name in self.commands['config_commands']
-                    and (permissions['whitelist'] or permissions['mod'])
-                    and not permissions['blacklist']):
+                    and is_mod or self.__access_list.user_in_whitelist(user['user_id'])
+                    and not self.__access_list.user_in_blacklist(user['user_id'])):
                 return self.commands['config_commands'][command_name](command, user)
             if (command_name in self.commands['mod_commands']
-                    and (permissions['whitelist'] or permissions['mod'])
-                    and not permissions['blacklist']):
+                    and is_mod or self.__access_list.user_in_whitelist(user['user_id'])
+                    and not self.__access_list.user_in_blacklist(user['user_id'])):
                 return self.commands['mod_commands'][command_name](command)
             if (command_name in self.commands['game_state_commands']
-                    and (permissions['whitelist'] or permissions['mod'])
-                    and not permissions['blacklist']):
+                    and is_mod or self.__access_list.user_in_whitelist(user['user_id'])
+                    and not self.__access_list.user_in_blacklist(user['user_id'])):
                 return self.commands['game_state_commands'][command_name](user)
         except IndexError:
             self.logger.error('Command missing arguments')
+        return None
+
+    def _do_whitelist_command(self, command, username):
+        """Calls the command function the user invokes."""
+        logger = settings.init_logger(__name__)
+        commands = {
+            "add": partial(self.__access_list.add_user_to_whitelist),
+            "remove": partial(self.__access_list.remove_user_from_whitelist),
+            "ban": partial(self.__access_list.add_user_to_blacklist),
+            "unban": partial(self.__access_list.remove_user_from_blacklist)
+        }
+        try:
+            if command in commands:
+                return commands[command](username)
+        except IndexError:
+            logger.error('Command missing arguments')
+            return None
+        except KeyError:
+            logger.error('Command missing')
+            return None
         return None
 
     def _start_command(self, user):
@@ -220,7 +162,6 @@ class GuessingGameBot():
         self.state['database']['streamer'].reload()
         filename = str(datetime.now()).replace(':', '_')
         file = os.path.join(os.path.curdir, 'reports', filename + '.csv')
-        amazon_s3 = boto3.resource('s3')
         if not os.path.exists(file):
             try:
                 os.makedirs(os.path.dirname(file))
@@ -232,8 +173,10 @@ class GuessingGameBot():
             report_writer.writerow([guess.timestamp, guess.participant, guess.participant_name,
                                     guess.guess_type, guess.guess, guess.session_points,
                                     guess.total_points])
-        bucket = amazon_s3.Bucket(os.environ['S3_BUCKET'])
-        bucket.upload_file(file, str(datetime.now()) + '.csv', ExtraArgs={'ACL':'public-read'})
+        if os.environ['AWS_ACCESS_KEY_ID']:
+            amazon_s3 = boto3.resource('s3')
+            bucket = amazon_s3.Bucket(os.environ['S3_BUCKET'])
+            bucket.upload_file(file, str(datetime.now()) + '.csv', ExtraArgs={'ACL':'public-read'})
         message = 'Guessing game ended by %s' % user['username']
         self.logger.info(message)
         return message
@@ -367,20 +310,16 @@ class GuessingGameBot():
         return None
 
     def _hud_command(self, command):
-        if len(command) > 1:
-            subcommand_name = command[1]
+        if len(command) > 0:
+            subcommand_name = command[0]
             if subcommand_name in self.commands['whitelist']:
-                return whitelist_commands.do_whitelist_command(
-                    command,
-                    self.state['database']['streamer'],
-                    self.state['database']['channel-id']
-                    )
+                return self._do_whitelist_command(subcommand_name, command[1])
             if subcommand_name in self.guessables.extra_item_types:
-                return guessing.complete_extra_guess(self, command[1:])
+                return guessing.complete_extra_guess(self, command[0:])
         if not self.state['running']:
             self.logger.info('Guessing game not running')
             return None
-        command_value = command[1].lower()
+        command_value = command[0].lower()
         item = self.guessables.get_item(command_value)
         if not item:
             self.logger.info('Item %s not found', command_value)

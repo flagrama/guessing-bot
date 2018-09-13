@@ -25,4 +25,4 @@ class TwitchAPI():
             self.logger.error('User not found by Twitch API')
             return None
         self.logger.debug('Found %s ID %s', username, user_id)
-        return user_id
+        return int(user_id)

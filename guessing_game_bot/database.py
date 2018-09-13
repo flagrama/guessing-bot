@@ -50,5 +50,7 @@ class DbStreamer(mongoengine.Document):
     whitelist = mongoengine.ListField(mongoengine.EmbeddedDocumentField(WhitelistUser))
     blacklist = mongoengine.ListField(mongoengine.EmbeddedDocumentField(BlacklistUser))
     sessions = mongoengine.ListField(mongoengine.EmbeddedDocumentField(Session))
+    multi_guess = mongoengine.DictField()
+    guessables = mongoengine.DictField()
 
     meta = {"collection":"streamer"}

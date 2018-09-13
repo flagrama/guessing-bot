@@ -3,7 +3,7 @@ from .extra_guessable import ExtraGuessable
 from . import settings
 
 class Guessable():
-    def __init__(self, *blacklist, modes, extra):
+    def __init__(self, *blacklist, modes=[], extra={}):
         self.logger = settings.init_logger(__name__)
         self.__items = None
         self.__modes = None

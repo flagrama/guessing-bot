@@ -83,7 +83,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
             "username": username,
             "room_id": room_id,
             "room_name": event.target,
-            "user_id": user_id
+            "user_id": int(user_id)
         }
         if room_id == user_id:
             self.data['users'][user_hash]['is_streamer'] = True
@@ -98,19 +98,19 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
 
     def _do_command(self, event, connection, command_name, value):
         user = self._get_user(event)
+        if 'is_streamer' in user:
+            is_mod = True
+        else:
+            is_mod = self._is_user_mod(event)
         if command_name in self.commands['guessing-game']:
             if user['room_id'] in self.data['guessing_game_bots']:
                 current_bot = self.data['guessing_game_bots'][user['room_id']]
             if not current_bot:
                 return
-            message = current_bot.do_command(user, value)
+            message = current_bot.do_command(user, is_mod, command_name, value)
             if message:
                 connection.privmsg(user['room_name'], message)
             return
-        if 'is_streamer' in user:
-            is_mod = True
-        else:
-            is_mod = self._is_user_mod(event)
         if command_name in self.commands['default'] and is_mod:
             message = default_commands.do_default_command(self, value)
             if message:
@@ -150,4 +150,4 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         for existing in self.commands.values():
             commands += existing
         if command[0].lower() in commands:
-            self._do_command(event, connection, command[0], commands[1:])
+            self._do_command(event, connection, command[0], command[1:])
