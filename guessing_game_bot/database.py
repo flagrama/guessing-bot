@@ -7,6 +7,11 @@ class Command(mongoengine.EmbeddedDocument):
     name = mongoengine.StringField(required=True)
     output = mongoengine.StringField(required=True)
 
+class Mode(mongoengine.EmbeddedDocument):
+    """The mode database class."""
+    name = mongoengine.StringField(required=True)
+    items = mongoengine.ListField(mongoengine.StringField())
+
 class Participant(mongoengine.EmbeddedDocument):
     """The participant database class."""
     username = mongoengine.StringField(required=True)
@@ -52,5 +57,6 @@ class DbStreamer(mongoengine.Document):
     sessions = mongoengine.ListField(mongoengine.EmbeddedDocumentField(Session))
     multi_guess = mongoengine.DictField()
     guessables = mongoengine.DictField()
+    modes = mongoengine.ListField(mongoengine.EmbeddedDocumentField(Mode))
 
     meta = {"collection":"streamer"}

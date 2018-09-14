@@ -89,7 +89,8 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
             self.data['users'][user_hash]['is_streamer'] = True
         return self.data['users'][user_hash]
 
-    def _is_user_mod(self, event):
+    @staticmethod
+    def _is_user_mod(event):
         for tag in event.tags:
             if tag['key'] == 'mod':
                 if tag['value'] == '1':
@@ -112,7 +113,13 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
                 connection.privmsg(user['room_name'], message)
             return
         if command_name in self.commands['default'] and is_mod:
-            message = default_commands.do_default_command(self, value)
+            current_streamer = self.data['streamers'][user['room_id']]
+            existing_commands = {
+                "default": self.commands['default'],
+                "guessing-game": self.commands['guessing-game'],
+                "custom": self.commands[user['room_id']]}
+            self.commands[user['room_id']], message = default_commands.do_default_command(
+                current_streamer, existing_commands, command_name, value)
             if message:
                 connection.privmsg(user['room_name'], message)
             return
