@@ -4,6 +4,7 @@ class User(db.Document):
     streamer_id = db.IntField(required=True, unique=True)
     username = db.StringField(required=True)
     email = db.StringField(required=True)
+    streamer = db.ReferenceField('Streamer')
     token = db.ReferenceField('Token')
 
     def __repr__(self):

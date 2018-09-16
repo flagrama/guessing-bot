@@ -3,6 +3,7 @@ from flask_dance.consumer import oauth_authorized # pylint: disable=import-error
 from flask_login import login_user # pylint: disable=import-error
 from guessing_game_web.app.models.token import Token
 from guessing_game_web.app.models.user import User
+from guessing_game_bot.database import Streamer
 
 from . import twitch
 
@@ -35,6 +36,18 @@ def finish_authorize(blueprint, token):
         user.save()
         token.user = user
         token.save()
+    # Link to Guessing Game Bot Streamer
+    try:
+        streamer = Streamer.objects.get(channel_id=streamer_id) #pylint: disable=no-member
+        user.streamer = streamer
+        user.save()
+        streamer.user = user
+        streamer.save()
+    except Streamer.DoesNotExist: #pylint: disable=no-member
+        streamer = Streamer(name=username, channel_id=streamer_id, user=user)
+        streamer.save()
+        user.streamer = streamer
+        user.save()
     # Login the user
     login_user(user)
     flash('You have successfully been logged in.')

@@ -1,57 +1,49 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>{{ title }} | Guessing Game</title>
-    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
     <!-- <link rel="shortcut icon" href="{{ url_for('static', filename='img/favicon.ico') }}"> -->
 </head>
 <body>
-    <nav class="navbar navbar-default navbar-fixed-top topnav" role="navigation">
+    <nav class="navbar navbar-expand-lg" role="navigation">
         <div class="container topnav">
-          <div class="navbar-header">
-              <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
-                  <span class="sr-only">Toggle navigation</span>
-                  <span class="icon-bar"></span>
-                  <span class="icon-bar"></span>
-                  <span class="icon-bar"></span>
-              </button>
-              <a class="navbar-brand topnav" href="{{ url_for('home.homepage') }}">Guessing Game</a>
-          </div>
-          <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
-              <ul class="nav navbar-nav navbar-right">
-                  {% if current_user.is_authenticated %}
-                  <li><a href="{{ url_for('home.dashboard') }}">Dashboard</a></li>
-                  <li><a href="{{ url_for('home.logout') }}">Log Out</a></li>
-                  {% else %}
-                  <li><a href="{{ url_for('twitch.start_authorize') }}">Login</a></li>
-                  {% endif %}
-              </ul>
-          </div>
+            <div class="navbar-header">
+                <a class="navbar-brand topnav" href="{{ url_for('home.homepage') }}">Guessing Game</a>
+            </div>
+            <div class="navbar-collapse" id="bs-example-navbar-collapse-1">
+                <ul class="nav navbar-nav ml-auto">
+                    {% if current_user.is_authenticated %}
+                    <li class="list-inline pl-5"><a href="{{ url_for('home.dashboard') }}">Dashboard</a></li>
+                    <li class="list-inline pl-5"><a href="{{ url_for('home.logout') }}">Log Out</a></li>
+                    {% else %}
+                    <li class="list-inline pl-5"><a href="{{ url_for('twitch.start_authorize') }}">Login</a></li>
+                    {% endif %}
+                </ul>
+            </div>
         </div>
     </nav>
     <div class="wrapper">
-      {% block body %}
-      {% endblock %}
-      <div class="push"></div>
+        {% block body %}
+        {% endblock %}
+        <div class="push"></div>
     </div>
     <footer>
         <div class="container">
             <div class="row">
-                <div class="col-lg-12">
-                    <ul class="list-inline">
-                        {% if current_user.is_authenticated %}
-                        <li><a href="{{ url_for('home.dashboard') }}">Dashboard</a></li>
-                        <li class="footer-menu-divider">⋅</li>
-                        <li><a href="{{ url_for('home.logout') }}">Log Out</a></li>
-                        {% else %}
-                        <li><a href="{{ url_for('twitch.start_authorize') }}">Login</a></li>
-                        {% endif %}
-                    </ul>
+                <div class="col-lg-2"></div>
+                <div class="col-lg-8">
                     <p class="copyright text-muted small">Copyright © 2018 Vincent "flagrama" Cunningham. All Rights Reserved</p>
                 </div>
+                <div class="col-lg-2"></div>
             </div>
         </div>
     </footer>
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
 </body>
 </html>
