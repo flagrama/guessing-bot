@@ -1,0 +1,41 @@
+from flask import redirect, url_for, flash
+from flask_dance.consumer import oauth_authorized # pylint: disable=import-error
+from flask_login import login_user # pylint: disable=import-error
+from guessing_game_web.app.models.token import Token
+from guessing_game_web.app.models.user import User
+
+from . import twitch
+
+@twitch.route("/")
+def start_authorize():
+    return redirect(url_for("twitch.login"))
+
+@twitch.route("/twitch/authorized")
+@oauth_authorized.connect
+def finish_authorize(blueprint, token):
+    resp = blueprint.session.get("users")
+    assert resp.ok, resp.text
+    #Get/Create user
+    streamer_id = resp.json()['data'][0]['id']
+    username = resp.json()['data'][0]['display_name']
+    email = resp.json()['data'][0]['email']
+    try:
+        user = User.objects.get(streamer_id=streamer_id)
+        token = Token(provider="twitch", token=token)
+        token.save()
+        user.token = token
+        user.save()
+        token.user = user
+        token.save()
+    except User.DoesNotExist: #pylint: disable=no-member
+        user = User(streamer_id=streamer_id, username=username, email=email)
+        token = Token(provider="twitch", token=token)
+        token.save()
+        user.token = token
+        user.save()
+        token.user = user
+        token.save()
+    # Login the user
+    login_user(user)
+    flash('You have successfully been logged in.')
+    return redirect(url_for('home.dashboard'))
