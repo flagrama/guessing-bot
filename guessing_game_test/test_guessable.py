@@ -1,6 +1,6 @@
 import os
 from unittest import TestCase
-import jstyleson
+import json
 from guessing_game_bot.guessable import Guessables as GuessableClass
 from guessing_game_bot.database import Mode
 
@@ -10,7 +10,7 @@ class GuessableTest(TestCase):
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'items.test.json')
         # TODO: Mock database instead of grabbing from json file
         with open(path) as items:
-            self.json = jstyleson.load(items)
+            self.json = json.load(items)
 
     def test_empty_properties(self):
         """Test that class properties are properly instantiated to falsy values"""

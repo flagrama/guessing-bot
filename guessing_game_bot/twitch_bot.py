@@ -4,7 +4,7 @@ import os
 import irc.bot
 import mongoengine
 
-from .database import DbStreamer
+from .database import Streamer
 from .twitch import TwitchAPI
 from . import default_commands
 from .guessing_game_bot import GuessingGameBot
@@ -33,7 +33,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
         }
         self._get_self_id()
         self._database_connect()
-        for streamer in DbStreamer.objects: #pylint: disable=no-member
+        for streamer in Streamer.objects: #pylint: disable=no-member
             self.data['streamers'][streamer.channel_id] = streamer
             self.commands[streamer.channel_id] = []
             for command in streamer.commands:

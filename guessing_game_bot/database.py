@@ -44,7 +44,7 @@ class BlacklistUser(mongoengine.EmbeddedDocument):
     username = mongoengine.StringField(required=True)
     user_id = mongoengine.IntField(required=True)
 
-class DbStreamer(mongoengine.Document):
+class Streamer(mongoengine.Document):
     """The streamer database class."""
     name = mongoengine.StringField(required=True)
     channel_id = mongoengine.StringField(required=True, unique=True)
@@ -58,5 +58,6 @@ class DbStreamer(mongoengine.Document):
     multi_guess = mongoengine.DictField()
     guessables = mongoengine.DictField()
     modes = mongoengine.ListField(mongoengine.EmbeddedDocumentField(Mode))
+    user = mongoengine.ReferenceField('User')
 
     meta = {"collection":"streamer"}

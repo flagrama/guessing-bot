@@ -2,7 +2,7 @@
 
 import os
 from . import settings
-from .database import DbStreamer, WhitelistUser, BlacklistUser
+from .database import Streamer, WhitelistUser, BlacklistUser
 from .twitch import TwitchAPI
 
 class AccessList():
@@ -68,7 +68,7 @@ class AccessList():
             return message
         new_user = WhitelistUser(username=username, user_id=user_id)
         self.__whitelist.append(new_user)
-        database = DbStreamer.objects.filter( #pylint: disable=no-member
+        database = Streamer.objects.filter( #pylint: disable=no-member
             channel_id=self.__channel_id).modify(
                 whitelist=self.__whitelist)
         database.save()
@@ -95,7 +95,7 @@ class AccessList():
         if not existing_user:
             return message
         self.__whitelist.remove(existing_user)
-        database = DbStreamer.objects.filter( #pylint: disable=no-member
+        database = Streamer.objects.filter( #pylint: disable=no-member
             channel_id=self.__channel_id).modify(
                 whitelist=self.__whitelist)
         database.save()
@@ -122,7 +122,7 @@ class AccessList():
             return message
         new_user = BlacklistUser(username=username, user_id=user_id)
         self.__blacklist.append(new_user)
-        database = DbStreamer.objects.filter( #pylint: disable=no-member
+        database = Streamer.objects.filter( #pylint: disable=no-member
             channel_id=self.__channel_id).modify(
                 whitelist=self.__blacklist)
         database.save()
@@ -149,7 +149,7 @@ class AccessList():
         if not existing_user:
             return message
         self.__blacklist.remove(existing_user)
-        database = DbStreamer.objects.filter( #pylint: disable=no-member
+        database = Streamer.objects.filter( #pylint: disable=no-member
             channel_id=self.__channel_id).modify(
                 whitelist=self.__blacklist)
         database.save()

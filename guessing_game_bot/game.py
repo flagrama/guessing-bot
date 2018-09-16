@@ -1,7 +1,7 @@
 """The module for the GuessingGame class."""
 from collections import deque, OrderedDict
 from datetime import datetime, timedelta
-import jstyleson
+import json
 from . import settings
 from .guessable import Guessables
 from .reports import Reports
@@ -283,7 +283,7 @@ class GuessingGame():
                 guesser=guesser.user_id,
                 participant_name=guesser.username,
                 guess_type=item_type,
-                guess=jstyleson.dumps(extra_guess).replace(',', '\n'),
+                guess=json.dumps(extra_guess).replace(',', '\n'),
                 session_points=guesser.session_points,
                 total_points=guesser.total_points)
             extra_guess['user-id'] = guesser.user_id
