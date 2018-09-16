@@ -14,9 +14,6 @@ class DevelopmentConfig(Config):
     """
     Development configurations
     """
-    MONGODB_SETTINGS = {
-        'db': 'streamer'
-    }
     DEBUG = True
 
 
@@ -24,7 +21,6 @@ class ProductionConfig(Config):
     """
     Production configurations
     """
-
     DEBUG = False
 
 app_config = {
