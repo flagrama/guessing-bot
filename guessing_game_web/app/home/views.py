@@ -1,4 +1,4 @@
-from flask import render_template, redirect, url_for, flash, request
+from flask import render_template, redirect, url_for, flash, request, session
 from flask_login import login_required, current_user, logout_user # pylint: disable=import-error
 from wtforms import Form, TextField, TextAreaField, validators, StringField, SubmitField
 
@@ -36,11 +36,13 @@ def dashboard():
 
 @home.route("/logout/")
 def logout():
-    if current_user.is_authenticated:
+    try:
         current_user.token.delete()
         current_user.token.save()
         current_user.token = None
         current_user.save()
         logout_user()
+    except AttributeError:
+        session.clear()
     flash('You have successfully been logged out.')
     return redirect(url_for('home.homepage'))
