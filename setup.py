@@ -13,6 +13,7 @@ setup(
         "flask_mongoengine==0.9.5",
         "irc==16.4",
         "mongoengine==0.15.3",
-        "gunicorn==19.9.0"
+        "gunicorn==19.9.0",
+        "blinker==1.4"
     ]
 )
