@@ -164,7 +164,7 @@ class TwitchBot(irc.bot.SingleServerIRCBot):
             streamer = Streamer.objects.get( #pylint: disable=no-member
                 channel_id = self.streamer.channel_id, commands__name = command_name)
             for custom_command in streamer.commands:
-                if command_name in custom_command['name']:
+                if command_name == custom_command['name']:
                     self.logger.info('Custom command %s received', custom_command.name)
                     connection.privmsg(self.channel, custom_command.output)
         except Streamer.DoesNotExist: #pylint: disable=no-member
