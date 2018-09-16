@@ -5,27 +5,41 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>{{ title }} | Guessing Game</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.3.1/css/all.css" integrity="sha384-mzrmE5qonljUremFsqc01SB46JvROS7bZs3IO2EmfFsd15uHvIt+Y8vEf7N7fWAU" crossorigin="anonymous">
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
     <!-- <link rel="shortcut icon" href="{{ url_for('static', filename='img/favicon.ico') }}"> -->
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg" role="navigation">
+    <nav class="navbar navbar-collapse navbar-expand-lg" role="navigation">
         <div class="container topnav">
-            <div class="navbar-header">
-                <a class="navbar-brand topnav" href="{{ url_for('home.homepage') }}">Guessing Game</a>
+            <a class="navbar-brand topnav" href="{{ url_for('home.homepage') }}">Guessing Game</a>
+            {% if current_user.is_authenticated %}
+            <button class="navbar-toggler mr-auto" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="fas fa-bars"></span>
+            </button>
+            <div class="nav navbar-nav navbar-right ml-auto">
+                <a class="btn btn-outline-primary" href="{{ url_for('home.logout') }}">Log Out</a>
             </div>
-            <div class="navbar-collapse" id="bs-example-navbar-collapse-1">
-                <ul class="nav navbar-nav ml-auto">
-                    {% if current_user.is_authenticated %}
-                    <li class="list-inline pl-5"><a href="{{ url_for('home.dashboard') }}">Dashboard</a></li>
-                    <li class="list-inline pl-5"><a href="{{ url_for('home.logout') }}">Log Out</a></li>
-                    {% else %}
-                    <li class="list-inline pl-5"><a href="{{ url_for('twitch.start_authorize') }}">Login</a></li>
-                    {% endif %}
+            {% else %}
+            <ul class="nav ml-auto">
+                <li class="nav-item"><a class="btn btn-outline btn-twitch-purple" href="{{ url_for('twitch.start_authorize') }}">Login with Twitch</a></li>
+            </ul>
+            {% endif %}
+        </div>
+    </nav>
+    {% if current_user.is_authenticated %}
+    <nav class="navbar-expand-lg">
+        <div class="container">
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav mr-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('home.dashboard') }}">Dashboard</a>
+                    </li>
                 </ul>
             </div>
         </div>
     </nav>
+    {% endif %}
     <div class="wrapper">
         {% block body %}
         {% endblock %}
