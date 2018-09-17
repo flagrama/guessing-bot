@@ -24,6 +24,7 @@
 
         <ul class="navbar-nav ml-auto">
             <li class="nav-item mx-1">
+                <a class="btn btn-danger" href="https://github.com/flagrama/guessing-bot/issues/new" role="button">Report Bug</a>
                 {% if current_user.is_authenticated %}
                 <a class="btn btn-primary" href="{{ url_for('home.logout') }}">Log Out</a>
                 {% else %}
