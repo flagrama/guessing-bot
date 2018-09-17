@@ -1,13 +1,13 @@
 from guessing_game_web.app import db
 
 class User(db.Document):
-    streamer_id = db.IntField(required=True, unique=True)
-    username = db.StringField(required=True)
-    email = db.StringField(required=True)
-    modes = db.ListField(db.ReferenceField('Mode'))
-    guessables = db.ListField(db.ReferenceField('Guessable'))
-    streamer = db.ReferenceField('Streamer')
-    token = db.ReferenceField('Token')
+    streamer_id = db.IntField(required=True, unique=True) # pylint: disable=no-member
+    username = db.StringField(required=True) # pylint: disable=no-member
+    email = db.StringField(required=True) # pylint: disable=no-member
+    modes = db.ListField(db.ReferenceField('Mode')) # pylint: disable=no-member
+    guessables = db.ListField(db.ReferenceField('Guessable')) # pylint: disable=no-member
+    streamer = db.ReferenceField('Streamer') # pylint: disable=no-member
+    token = db.ReferenceField('Token') # pylint: disable=no-member
 
     def __repr__(self):
         return '<User %r>' % self.username

@@ -1,15 +1,14 @@
-from flask import Response, request, flash, render_template, redirect, url_for
+from flask import request, flash, render_template, redirect, url_for
 from flask_login import login_required, current_user
-from wtforms import Form, TextField, TextAreaField, validators, StringField, SubmitField
 from guessing_game_web.app import db
 from guessing_game_web.app.models import form, user, guessable as db_guessable
 from . import guessable
 
 def get_user_guessable(guessable_id):
     try:
-        user_guessable = user.User.objects(
+        user_guessable = user.User.objects( # pylint: disable=no-member
             username=current_user.username, guessables__contains=guessable_id)
-    except (user.User.DoesNotExist, db.ValidationError) as exception:
+    except (user.User.DoesNotExist, db.ValidationError) as exception: # pylint: disable=no-member
         flash("Access Violation! {0}".format(exception), 'danger')
         return None
     return user_guessable
@@ -17,7 +16,7 @@ def get_user_guessable(guessable_id):
 def get_guessable(guessable_id):
     if not get_user_guessable(guessable_id):
         return None
-    return db_guessable.Guessable.objects.get(id=guessable_id)
+    return db_guessable.Guessable.objects.get(id=guessable_id) # pylint: disable=no-member
 
 def add_guessable(this_form):
     name = this_form.name.data

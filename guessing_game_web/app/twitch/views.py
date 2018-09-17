@@ -21,7 +21,7 @@ def finish_authorize(blueprint, token):
     username = resp.json()['data'][0]['display_name']
     email = resp.json()['data'][0]['email']
     try:
-        user = User.objects.get(streamer_id=streamer_id)
+        user = User.objects.get(streamer_id=streamer_id) # pylint: disable=no-member
         token = Token(provider="twitch", token=token)
         token.save()
         user.token = token
