@@ -4,6 +4,8 @@ class User(db.Document):
     streamer_id = db.IntField(required=True, unique=True)
     username = db.StringField(required=True)
     email = db.StringField(required=True)
+    modes = db.ListField(db.ReferenceField('Mode'))
+    guessables = db.ListField(db.ReferenceField('Guessable'))
     streamer = db.ReferenceField('Streamer')
     token = db.ReferenceField('Token')
 

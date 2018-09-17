@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block body %}
+{% include "flash.html" %}
+</div>
+<div class="container">
+    <div class="row">
+        <div class="col-lg-2"></div>
+        <div class="col-lg-8 text-center">
+            <h2>Add Guessable</h2>
+        </div>
+        <div class="col-lg-2"></div>
+    </div>
+    <div class="row">
+        <div class="col-lg-2"></div>
+        <div class="col-lg-8">
+            <form action="{{ url_for('guessable.add') }}" method="post" role="form">
+            {{ form.hidden_tag() }}
+            <div class="form-group">
+                <label for="name">{{ form.name.label }}</label>
+                <input type="text" class="form-control" id="name" name="name" placeholder="Name">
+                <br>
+                <label for="codes">{{ form.codes.label }}</label>
+                <input type="text" class="form-control" id="codes" name="codes" placeholder="Codes" data-role="tagsinput">
+            </div>
+            <center>
+                <button type="submit" class="btn btn-primary" id="add" name="add" >Add</button>
+            </center>
+            </form>
+        </div>
+        <div class="col-lg-2"></div>
+    </div>
+</div>
+{% endblock %}

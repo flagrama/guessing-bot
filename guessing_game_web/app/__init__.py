@@ -10,7 +10,7 @@ login_manager = LoginManager()
 @login_manager.user_loader
 def load_user(user_id):
     try:
-        return models.user.User.objects.get(streamer_id=user_id)
+        return models.user.User.objects.get(streamer_id=user_id) #pylint: disable=no-member
     except models.user.User.DoesNotExist: #pylint: disable=no-member
         return models.user.User()
 
@@ -33,5 +33,8 @@ def create_app(config_name):
 
     from guessing_game_web.app.home import home as home_blueprint
     app.register_blueprint(home_blueprint)
+
+    from guessing_game_web.app.guessable import guessable as guessable_blueprint
+    app.register_blueprint(guessable_blueprint, url_prefix="/dashboard/guessable")
 
     return app
