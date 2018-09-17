@@ -1,13 +1,24 @@
 .list-inline { float: left; }
 .btn-twitch-purple {
     border-color: #6441a4;
-    color: #6441a4;
+    background-color: #6441a4;
+    color: #ffffff;
 }
 
 .btn-twitch-purple:hover {
     background-color: #6441a4;
-    border-color: #6441a4;
+    border-color: #ffffff;
     color: #ffffff;
+}
+
+body.sidebar-toggled
+footer.sticky-footer,
+footer.sticky-footer {
+    width: 100%;
+}
+
+.sidebar {
+    min-height: calc(100vh - 130px)
 }
 
 .push {

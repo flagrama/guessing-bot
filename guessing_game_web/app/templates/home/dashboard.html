@@ -2,88 +2,101 @@
 {% block title %}Dashboard{% endblock %}
 {% block body %}
 {% include "flash.html" %}
-<div class="push"></div>
-<!-- <div class="container">
-    <div class="row vertical-align">
-        <div>
-            <h3 class="float-left">Commands</h3>
+<div class="card mb-3">
+    <div class="card-header">
+        <div class="d-flex">
+            <div class="p-2 order-1">Guessables</div>
+            <div class="p-2 order-12 ml-auto">
+                <a href="{{ url_for('guessable.add') }}">
+                    Add
+                </a>
+            </div>
         </div>
     </div>
-    {% for command in current_user.streamer.commands %}
-    <div class="row">
-        <div class="col-lg-1 col-md-2">
-            <a class="float-left pl-lg-3 pl-md-4" href="#">
-                <span class="fas fa-edit"></span>
-            </a>
-            <a class="float-left pl-lg-3 pl-md-4 " href="#">
-                <span class="fas fa-trash"></span>
-            </a>
+    {% if current_user.guessables|length > 0 %}
+    <div class="card-body">
+        <div class="d-flex">
+            <div class="col-lg-1 col-md-1 pl-lg-0 text-nowrap order-1 text-center">
+                <strong>Modify</strong>
+            </div>
+            <div class="col-lg-1 col-md-3 text-nowrap pl-md-4 pl-lg-5 pr-md-5 order-2 text-center">
+                <strong>Name</strong>
+            </div>
+            <div class="col-lg-10 col-md-7 px-md-0 px-lg-2 order-2 text-center">
+                <strong>Codes</strong>
+            </div>
         </div>
-        <div>
-            <p class="text-left">{{ command.name }} -- {{ command.output }}</p>
+        <hr class="my-2">
+        {% for guessable in current_user.guessables %}
+        <div class="d-flex">
+            <div class="px-2 order-1">
+                <a href="#">
+                    <span class="fas fa-edit fa-fw"></span>
+                </a>
+            </div>
+            <div class="px-2 order-2">
+                <a href="#">
+                    <span class="fas fa-trash fa-fw"></span>
+                </a>
+            </div>
+            <div class="col-lg-2 col-md-2 px-2 order-3">
+                <p class="text-center">{{ guessable.name }}</p>
+            </div>
+            <div class="col-lg-9 col-md-8 px-2 order-4">
+                {{ ', '.join(guessable.codes) }}
+            </div>
         </div>
+        {% endfor %}
     </div>
-    {% endfor %}
-    <div class="row">
-        <div>
-            <a href="#">Add New Command</a>
-        </div>
-    </div>
+    {% endif %}
 </div>
-<div class="push"></div> -->
-<div class="container">
-    <div class="row vertical-align">
-        <div>
-            <h3 class="float-left">Guessables</h3>
+
+<div class="card mb-3">
+    <div class="card-header">
+        <div class="d-flex">
+            <div class="p-2 order-1">Modes</div>
+            <div class="p-2 order-12 ml-auto">
+                <a href="#">
+                    Add
+                </a>
+            </div>
         </div>
     </div>
-    {% for guessable in current_user.guessables %}
-    <div class="row">
-        <div class="col-lg-1 col-md-2">
-            <a class="float-left pl-lg-3 pl-md-4" href="#">
-                <span class="fas fa-edit"></span>
-            </a>
-            <a class="float-left pl-lg-3 pl-md-4 " href="#">
-                <span class="fas fa-trash"></span>
-            </a>
+    {% if current_user.modes|length > 0 %}
+    <div class="card-body">
+        <div class="d-flex">
+            <div class="col-lg-1 col-md-1 text-nowrap order-1 text-center">
+                <strong>Modify</strong>
+            </div>
+            <div class="col-lg-1 col-md-3 text-nowrap pl-md-4 pl-lg-5 pr-md-5 order-2 text-center">
+                <strong>Name</strong>
+            </div>
+            <div class="col-lg-8 col-md-7 px-md-0 px-lg-2 order-2 text-center">
+                <strong>Items</strong>
+            </div>
         </div>
-        <div>
-            <p class="text-left">{{ guessable.name }} &mdash; [{{ ' '.join(guessable.codes) }}]</p>
+        <hr class="my-2">
+        {% for mode in current_user.modes %}
+        <div class="d-flex">
+            <div class="px-2 order-1">
+                <a href="#">
+                    <span class="fas fa-edit fa-fw"></span>
+                </a>
+            </div>
+            <div class="px-2 order-2">
+                <a href="#">
+                    <span class="fas fa-trash fa-fw"></span>
+                </a>
+            </div>
+            <div class="col-lg-2 col-md-2 px-2 order-3">
+                <p class="text-left">{{ mode.name }}</p>
+            </div>
+            <div class="col-lg-9 col-md-8 px-2 order-4">
+                {{ ', '.join(guessable.codes) }}
+            </div>
         </div>
+        {% endfor %}
     </div>
-    {% endfor %}
-    <div class="row">
-        <div>
-            <a href="{{ url_for('guessable.add') }}">Add New Guessable</a>
-        </div>
-    </div>
-</div>
-<div class="push"></div>
-<div class="container">
-    <div class="row vertical-align">
-        <div>
-            <h3 class="float-left">Modes</h3>
-        </div>
-    </div>
-    {% for mode in current_user.streamer.modes %}
-    <div class="row">
-        <div class="col-lg-1 col-md-2">
-            <a class="float-left pl-lg-3 pl-md-4" href="#">
-                <span class="fas fa-edit"></span>
-            </a>
-            <a class="float-left pl-lg-3 pl-md-4 " href="#">
-                <span class="fas fa-trash"></span>
-            </a>
-        </div>
-        <div>
-            <p class="text-left">{{ mode.name }} -- {{ mode.guessables }}</p>
-        </div>
-    </div>
-    {% endfor %}
-    <div class="row">
-        <div>
-            <a href="#">Add New Mode</a>
-        </div>
-    </div>
+    {% endif %}
 </div>
 {% endblock %}

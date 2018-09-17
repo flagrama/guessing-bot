@@ -14,6 +14,6 @@ def add():
             form.AddGuessable.add_guessable(current_user, this_form)
             flash("Successfully created Guessable", 'success')
             return redirect(url_for('home.dashboard'))
-        flash('All fields are required', 'error')
+        flash('All fields are required', 'danger')
 
     return render_template('guessable/add.html', title="Add Guessable", form=this_form)

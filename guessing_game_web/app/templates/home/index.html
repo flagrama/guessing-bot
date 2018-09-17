@@ -1,40 +1,23 @@
 {% extends "base.html" %}
 {% block title %}Home{% endblock %}
 {% block body %}
-<div class="intro-header">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-12 text-center">
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-
-                {% for message in messages %}
-                    {% if "Error" not in message[1]: %}
-                        <div class="alert alert-info">
-                        <strong>Success! </strong> {{ message[1] }}
-                        </div>
-                    {% endif %}
-
-                    {% if "Error" in message[1]: %}
-                        <div class="alert alert-danger">
-                        <strong>Error: </strong> {{ message[1] }}
-                        </div>
-                    {% endif %}
-                {% endfor %}
-                    {% endif %}
-                {% endwith %}
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-lg-12 text-center">
-                <div class="intro-message">
-                    <h1>Guessing Game</h1>
-                    <h2>A bot for playing guessing games in Twitch chat!</h2>
-                    <hr class="intro-divider">
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </div>
+{% include "flash.html" %}
+<div class="jumbotron">
+    <h1 class="display-4">Guessing Game</h1>
+    <p class="lead">A bot for playing guessing games in Twitch chat!</h2>
+    <hr class="my-4">
+    <p>
+        You can choose to use this hosted solution or run your own version of the bot by downloading
+        the source code from GitHub.
+    </p>
+    <a class="lead">
+        {% if current_user.is_authenticated %}
+        <a class="btn btn-primary btn-lg" href="{{ url_for('home.dashboard') }}" role="button">Launch</a>
+        {% else %}
+        <a class="btn btn-twitch-purple btn-lg" href="{{ url_for('twitch.start_authorize') }}" role="button">Login with Twitch</a>
+        {% endif %}
+        <a class="btn btn-primary btn-lg" href="https://github.com/flagrama/guessing-bot" role="button">Download</a>
+    </a>
+    </ul>
 </div>
 {% endblock %}
