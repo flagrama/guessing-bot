@@ -16,17 +16,21 @@
 <div class="row">
     <div class="col-lg-4"></div>
     <div class="col-lg-4">
-        <form action="{{ url_for('guessable.add') }}" method="post" role="form">
+        <form action="{{ url_for('guessable.update', guessable_id=existing_key) }}" method="post" role="form">
         {{ form.hidden_tag() }}
         <div class="form-group">
+            <label for="key">{{ form.key.label }}</label>
+            <input type="text" class="form-control" id="key" name="key" value="{{ existing_key }}" disabled>
+            <input type="hidden" class="form-control" id="key" name="key" value="{{ existing_key }}">
+            <br>
             <label for="name">{{ form.name.label }}</label>
-            <input type="text" class="form-control" id="name" name="name" placeholder="Name">
+            <input type="text" class="form-control" id="name" name="name" placeholder="Name" value="{{ existing_name }}">
             <br>
             <label for="codes">{{ form.codes.label }}</label>
-            <input type="text" class="form-control" id="codes" name="codes" data-role="tagsinput">
+            <input type="text" class="form-control" id="codes" name="codes" data-role="tagsinput" value="{{ existing_codes }}">
         </div>
         <center>
-            <button type="submit" class="btn btn-primary" id="add" name="add" >Add</button>
+            <button type="submit" class="btn btn-primary" id="update" name="update">Update</button>
         </center>
         </form>
     </div>

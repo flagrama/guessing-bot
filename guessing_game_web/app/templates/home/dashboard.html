@@ -30,12 +30,12 @@
         {% for guessable in current_user.guessables %}
         <div class="d-flex">
             <div class="px-2 order-1">
-                <a href="#">
+                <a href="{{ url_for('guessable.update', guessable_id=guessable.id) }}">
                     <span class="fas fa-edit fa-fw"></span>
                 </a>
             </div>
             <div class="px-2 order-2">
-                <a href="#">
+                <a href="{{ url_for('guessable.delete', guessable_id=guessable.id) }}">
                     <span class="fas fa-trash fa-fw"></span>
                 </a>
             </div>
