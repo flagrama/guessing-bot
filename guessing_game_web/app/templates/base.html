@@ -12,11 +12,13 @@
 <body>
     <nav class="navbar navbar-collapse navbar-expand-lg" role="navigation">
         <div class="container topnav">
-            <a class="navbar-brand topnav" href="{{ url_for('home.homepage') }}">Guessing Game</a>
             {% if current_user.is_authenticated %}
-            <button class="navbar-toggler mr-auto" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="fas fa-bars"></span>
             </button>
+            {% endif %}
+            <a class="navbar-brand topnav pl-2" href="{{ url_for('home.homepage') }}">Guessing Game</a>
+            {% if current_user.is_authenticated %}
             <div class="nav navbar-nav navbar-right ml-auto">
                 <a class="btn btn-outline-primary" href="{{ url_for('home.logout') }}">Log Out</a>
             </div>
