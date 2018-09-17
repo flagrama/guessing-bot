@@ -1,6 +1,6 @@
 from flask import redirect, url_for, flash
-from flask_dance.consumer import oauth_authorized # pylint: disable=import-error
-from flask_login import login_user # pylint: disable=import-error
+from flask_dance.consumer import oauth_authorized
+from flask_login import login_user
 from guessing_game_web.app.models.token import Token
 from guessing_game_web.app.models.user import User
 from guessing_game_bot.database import Streamer

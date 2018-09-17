@@ -1,5 +1,5 @@
 from flask import Response, request, flash, render_template, redirect, url_for
-from flask_login import login_required, current_user # pylint: disable=import-error
+from flask_login import login_required, current_user
 from wtforms import Form, TextField, TextAreaField, validators, StringField, SubmitField
 from guessing_game_web.app import db
 from guessing_game_web.app.models import form, user, guessable as db_guessable

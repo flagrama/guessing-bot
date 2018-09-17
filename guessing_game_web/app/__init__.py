@@ -1,6 +1,6 @@
 from flask import Flask, redirect, url_for
-from flask_login import LoginManager # pylint: disable=import-error
-from flask_mongoengine import MongoEngine # pylint: disable=import-error
+from flask_login import LoginManager
+from flask_mongoengine import MongoEngine
 from guessing_game_web.config import app_config
 from guessing_game_web.app import models
 

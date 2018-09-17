@@ -1,5 +1,5 @@
 from flask import Blueprint
-from flask_dance import OAuth2ConsumerBlueprint # pylint: disable=import-error
+from flask_dance import OAuth2ConsumerBlueprint
 
 twitch = OAuth2ConsumerBlueprint(
     "twitch", __name__,
