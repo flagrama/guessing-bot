@@ -4,21 +4,25 @@ from guessing_game_web.app import db
 from guessing_game_web.app.models import form, user, guessable as db_guessable
 from . import guessable
 
-def get_user_guessable(guessable_id):
+def __get_user_guessable(guessable_id):
     try:
         user_guessable = user.User.objects( # pylint: disable=no-member
             username=current_user.username, guessables__contains=guessable_id)
-    except (user.User.DoesNotExist, db.ValidationError) as exception: # pylint: disable=no-member
-        flash("Access Violation! {0}".format(exception), 'danger')
+    except (user.User.DoesNotExist, db.ValidationError): # pylint: disable=no-member
+        flash("Access Violation!", 'danger')
         return None
     return user_guessable
 
-def get_guessable(guessable_id):
-    if not get_user_guessable(guessable_id):
+def __get_guessable(guessable_id):
+    __get_user_guessable(guessable_id)
+    try:
+        this_guessable = db_guessable.Guessable.objects.get(id=guessable_id) # pylint: disable=no-member
+    except (user.User.DoesNotExist, db.ValidationError): # pylint: disable=no-member
+        flash("Access Violation!", 'danger')
         return None
-    return db_guessable.Guessable.objects.get(id=guessable_id) # pylint: disable=no-member
+    return this_guessable
 
-def add_guessable(this_form):
+def __add_guessable(this_form):
     name = this_form.name.data
     codes = this_form.codes.data.lower().split(',')
     codes = list(set(codes))
@@ -37,7 +41,7 @@ def add_guessable(this_form):
     current_user.save()
     return True
 
-def update_guessable(this_form):
+def __update_guessable(this_form):
     key = this_form.key.data
     name = this_form.name.data
     codes = this_form.codes.data.lower().split(',')
@@ -54,7 +58,7 @@ def update_guessable(this_form):
                 ', '.join(code_matches), this_guessable.name)]
     if matches:
         return matches
-    this_guessable = get_guessable(this_form.key.data)
+    this_guessable = __get_guessable(this_form.key.data)
     if not this_guessable:
         return False
     this_guessable.update(set__name=name, set__codes=codes)
@@ -62,9 +66,9 @@ def update_guessable(this_form):
     current_user.save()
     return True
 
-def delete_guessable(guessable_id):
-    this_guessable = get_guessable(guessable_id)
-    user_guessable = get_user_guessable(guessable_id)
+def __delete_guessable(guessable_id):
+    this_guessable = __get_guessable(guessable_id)
+    user_guessable = __get_user_guessable(guessable_id)
     if not this_guessable or not user_guessable:
         return False
     existing_name = this_guessable.name
@@ -81,7 +85,7 @@ def add():
     if request.method == 'POST':
         success = True
         if this_form.validate():
-            result = add_guessable(this_form)
+            result = __add_guessable(this_form)
             if isinstance(result, list) and not isinstance(result, str):
                 for message in result:
                     flash(message, 'danger')
@@ -105,7 +109,7 @@ def update(guessable_id):
     if request.method == 'POST':
         success = True
         if this_form.validate():
-            result = update_guessable(this_form)
+            result = __update_guessable(this_form)
             if isinstance(result, list) and not isinstance(result, str):
                 for message in result:
                     flash(message, 'danger')
@@ -119,7 +123,9 @@ def update(guessable_id):
         else:
             flash('All fields are required', 'danger')
 
-    this_guessable = get_guessable(guessable_id)
+    this_guessable = __get_guessable(guessable_id)
+    if not this_guessable:
+        return redirect(url_for('home.logout'))
     return render_template(
         'guessable/update.html',
         title="Update {0}".format(this_guessable.name),
@@ -131,7 +137,7 @@ def update(guessable_id):
 @guessable.route('delete/<guessable_id>', methods=['GET'])
 @login_required
 def delete(guessable_id):
-    result = delete_guessable(guessable_id)
+    result = __delete_guessable(guessable_id)
     if not result:
         return redirect(url_for('home.logout'))
     flash("Deleted {0}".format(result), 'success')
