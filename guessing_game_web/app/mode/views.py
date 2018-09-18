@@ -3,10 +3,31 @@ from flask import request, flash, render_template, redirect, url_for
 from flask_login import login_required, current_user
 from guessing_game_web.app import db
 from guessing_game_web.app.models import form, user, guessable as db_mode
-from guessing_game_web.app.guessable.views import get_guessable_by_name
+from guessing_game_web.app.guessable import views as guessable_view
 from . import mode
 
-def __get_user_mode(mode_id):
+def __get_user_mode_ids_by_item(item_name):
+    user_modes = []
+    for this_mode in current_user.modes:
+        for item in this_mode.guessables:
+            if string.capwords(item) == string.capwords(item_name):
+                user_modes += [str(this_mode.id)]
+    return user_modes
+
+def get_modes_by_item_name(mode_item_name):
+    mode_ids = __get_user_mode_ids_by_item(mode_item_name)
+    if not mode_ids:
+        return None
+    these_modes = []
+    for mode_id in mode_ids:
+        try:
+            this_mode = db_mode.Mode.objects.get(id=mode_id) # pylint: disable=no-member
+            these_modes += [str(this_mode.id)]
+        except (user.User.DoesNotExist, db.ValidationError): # pylint: disable=no-member
+            return None
+    return these_modes
+
+def get_user_mode(mode_id):
     try:
         user_mode = user.User.objects( # pylint: disable=no-member
             username=current_user.username, modes__contains=mode_id)
@@ -15,8 +36,8 @@ def __get_user_mode(mode_id):
         return None
     return user_mode
 
-def __get_mode(mode_id):
-    __get_user_mode(mode_id)
+def get_mode(mode_id):
+    get_user_mode(mode_id)
     try:
         this_mode = db_mode.Mode.objects.get(id=mode_id) # pylint: disable=no-member
     except (user.User.DoesNotExist, db.ValidationError): # pylint: disable=no-member
@@ -39,7 +60,7 @@ def __add_mode(this_form):
     if matches:
         return matches
     for guessable in guessables:
-        if not get_guessable_by_name(guessable):
+        if not guessable_view.get_guessable_by_name(guessable):
             return "Guessable {0} not found in {1}'s guessables".format(
                 guessable, current_user.username)
     this_mode = db_mode.Mode(name=name, guessables=guessables).save()
@@ -64,7 +85,7 @@ def __update_mode(this_form):
                 ', '.join(item_matches), string.capwords(this_mode.name))]
     if matches:
         return matches
-    this_mode = __get_mode(this_form.key.data)
+    this_mode = get_mode(this_form.key.data)
     if not this_mode:
         return False
     this_mode.update(set__name=name, set__guessables=guessables)
@@ -73,8 +94,8 @@ def __update_mode(this_form):
     return True
 
 def __delete_mode(mode_id):
-    this_mode = __get_mode(mode_id)
-    user_mode = __get_user_mode(mode_id)
+    this_mode = get_mode(mode_id)
+    user_mode = get_user_mode(mode_id)
     if not this_mode or not user_mode:
         return False
     existing_name = this_mode.name
@@ -129,7 +150,7 @@ def update(mode_id):
         else:
             flash('All fields are required', 'danger')
 
-    this_mode = __get_mode(mode_id)
+    this_mode = get_mode(mode_id)
     if not this_mode:
         return redirect(url_for('home.logout'))
     return render_template(

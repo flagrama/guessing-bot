@@ -3,6 +3,7 @@ from flask import request, flash, render_template, redirect, url_for
 from flask_login import login_required, current_user
 from guessing_game_web.app import db
 from guessing_game_web.app.models import form, user, guessable as db_guessable
+from guessing_game_web.app.mode import views as mode_view
 from . import guessable
 
 def __get_user_guessable_id_by_name(guessable_name):
@@ -97,6 +98,23 @@ def __delete_guessable(guessable_id):
     user_guessable = __get_user_guessable(guessable_id)
     if not this_guessable or not user_guessable:
         return False
+    user_mode_ids = mode_view.get_modes_by_item_name(this_guessable.name)
+    if user_mode_ids:
+        for mode_id in user_mode_ids:
+            try:
+                db_guessable.Mode.objects(id=mode_id).update_one(pull__guessables=this_guessable.name)
+                this_mode = mode_view.get_mode(mode_id)
+                if this_mode:
+                    if len(this_mode.guessables) <= 0:
+                        print(len(this_mode.guessables))
+                        user_mode = mode_view.get_user_mode(this_mode.id)
+                        user_mode.update_one(pull__modes=this_mode)
+                        this_mode.delete()
+            except db.ValidationError:
+                flash("Mode {0} not found".format(string.capwords(mode_id)), 'danger')
+                return False
+            except db_guessable.Mode.DoesNotExist:
+                continue
     existing_name = this_guessable.name
     user_guessable.update_one(pull__guessables=this_guessable)
     this_guessable.delete()
