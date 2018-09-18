@@ -20,10 +20,11 @@ def get_guessable(guessable_id):
 
 def add_guessable(this_form):
     name = this_form.name.data
-    codes = this_form.codes.data.split(',')
+    codes = this_form.codes.data.lower().split(',')
+    codes = list(set(codes))
     matches = []
     for this_guessable in current_user.guessables:
-        if this_guessable.name == name:
+        if this_guessable.name.lower() == name.lower():
             return "Guessable name {0} already exists".format(name)
         code_matches = set(this_guessable.codes).intersection(set(codes))
         if code_matches:
@@ -39,12 +40,13 @@ def add_guessable(this_form):
 def update_guessable(this_form):
     key = this_form.key.data
     name = this_form.name.data
-    codes = this_form.codes.data.split(',')
+    codes = this_form.codes.data.lower().split(',')
+    codes = list(set(codes))
     matches = []
     for this_guessable in current_user.guessables:
         if str(this_guessable.id) == key:
             continue
-        if this_guessable.name == name:
+        if this_guessable.name.lower() == name.lower():
             return "Guessable name {0} already exists".format(name)
         code_matches = set(this_guessable.codes).intersection(set(codes))
         if code_matches:
