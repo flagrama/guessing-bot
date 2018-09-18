@@ -21,13 +21,37 @@ def get_guessable(guessable_id):
 def add_guessable(this_form):
     name = this_form.name.data
     codes = this_form.codes.data.split(',')
+    matches = []
+    for this_guessable in current_user.guessables:
+        if this_guessable.name == name:
+            return "Guessable name {0} already exists".format(name)
+        code_matches = set(this_guessable.codes).intersection(set(codes))
+        if code_matches:
+            matches += ["Guessable code(s) {0} already exists in {1}".format(
+                ','.join(code_matches), this_guessable.name)]
+    if matches:
+        return matches
     this_guessable = db_guessable.Guessable(name=name, codes=codes).save()
     current_user.guessables.append(this_guessable)
     current_user.save()
+    return True
 
 def update_guessable(this_form):
+    key = this_form.key.data
     name = this_form.name.data
     codes = this_form.codes.data.split(',')
+    matches = []
+    for this_guessable in current_user.guessables:
+        if str(this_guessable.id) == key:
+            continue
+        if this_guessable.name == name:
+            return "Guessable name {0} already exists".format(name)
+        code_matches = set(this_guessable.codes).intersection(set(codes))
+        if code_matches:
+            matches += ["Guessable code(s) {0} already exists in {1}".format(
+                ','.join(code_matches), this_guessable.name)]
+    if matches:
+        return matches
     this_guessable = get_guessable(this_form.key.data)
     if not this_guessable:
         return False
@@ -53,11 +77,21 @@ def add():
     this_form = form.AddGuessable()
 
     if request.method == 'POST':
+        success = True
         if this_form.validate():
-            add_guessable(this_form)
-            flash("Successfully created Guessable", 'success')
-            return redirect(url_for('home.dashboard'))
-        flash('All fields are required', 'danger')
+            result = add_guessable(this_form)
+            if isinstance(result, list) and not isinstance(result, str):
+                for message in result:
+                    flash(message, 'danger')
+                    success = False
+            elif isinstance(result, str):
+                flash(result, 'danger')
+                success = False
+            if success:
+                flash("Successfully created Guessable", 'success')
+                return redirect(url_for('home.dashboard'))
+        else:
+            flash('All fields are required', 'danger')
 
     return render_template('guessable/add.html', title="Add Guessable", form=this_form)
 
@@ -67,13 +101,21 @@ def update(guessable_id):
     this_form = form.UpdateGuessable()
 
     if request.method == 'POST':
+        success = True
         if this_form.validate():
             result = update_guessable(this_form)
-            if not result:
-                return redirect(url_for('home.logout'))
-            flash("Successfully updated {0}".format(this_form.name.data), 'success')
-            return redirect(url_for('home.dashboard'))
-        flash('All fields are required', 'danger')
+            if isinstance(result, list) and not isinstance(result, str):
+                for message in result:
+                    flash(message, 'danger')
+                    success = False
+            elif isinstance(result, str):
+                flash(result, 'danger')
+                success = False
+            if success:
+                flash("Successfully updated {0}".format(this_form.name.data), 'success')
+                return redirect(url_for('home.dashboard'))
+        else:
+            flash('All fields are required', 'danger')
 
     this_guessable = get_guessable(guessable_id)
     return render_template(
