@@ -7,4 +7,4 @@ class Guessable(db.Document):
 class Mode(db.Document):
     """The mode database class."""
     name = db.StringField(required=True) # pylint: disable=no-member
-    items = db.ListField(db.StringField(required=True), required=True) # pylint: disable=no-member
+    guessables = db.ListField(db.StringField(required=True), required=True) # pylint: disable=no-member

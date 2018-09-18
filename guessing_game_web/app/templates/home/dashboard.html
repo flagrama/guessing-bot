@@ -51,12 +51,13 @@
     {% endif %}
 </div>
 
+
 <div class="card mb-3">
     <div class="card-header">
         <div class="d-flex">
             <div class="p-2 order-1">Modes</div>
             <div class="p-2 order-12 ml-auto">
-                <a href="#">
+                <a href="{{ url_for('mode.add') }}">
                     Add
                 </a>
             </div>
@@ -65,13 +66,13 @@
     {% if current_user.modes|length > 0 %}
     <div class="card-body">
         <div class="d-flex">
-            <div class="col-lg-1 col-md-1 text-nowrap order-1 text-center">
+            <div class="col-lg-1 col-md-1 pl-lg-0 text-nowrap order-1 text-center">
                 <strong>Modify</strong>
             </div>
             <div class="col-lg-1 col-md-3 text-nowrap pl-md-4 pl-lg-5 pr-md-5 order-2 text-center">
                 <strong>Name</strong>
             </div>
-            <div class="col-lg-8 col-md-7 px-md-0 px-lg-2 order-2 text-center">
+            <div class="col-lg-10 col-md-7 px-md-0 px-lg-2 order-2 text-center">
                 <strong>Items</strong>
             </div>
         </div>
@@ -79,20 +80,20 @@
         {% for mode in current_user.modes %}
         <div class="d-flex">
             <div class="px-2 order-1">
-                <a href="#">
+                <a href="{{ url_for('mode.update', mode_id=mode.id) }}">
                     <span class="fas fa-edit fa-fw"></span>
                 </a>
             </div>
             <div class="px-2 order-2">
-                <a href="#">
+                <a href="{{ url_for('mode.delete', mode_id=mode.id) }}">
                     <span class="fas fa-trash fa-fw"></span>
                 </a>
             </div>
             <div class="col-lg-2 col-md-2 px-2 order-3">
-                <p class="text-left">{{ mode.name }}</p>
+                <p class="text-center">{{ mode.name }}</p>
             </div>
             <div class="col-lg-9 col-md-8 px-2 order-4">
-                {{ ', '.join(guessable.codes) }}
+                {{ ', '.join(mode.guessables) }}
             </div>
         </div>
         {% endfor %}

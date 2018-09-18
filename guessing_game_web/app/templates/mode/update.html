@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block css %}
+<link href="{{ url_for('static', filename='vendor/bootstrap-tagsinput/bootstrap-tagsinput.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+<h1 class="page-header">{{ title }}</h1>
+<hr>
+<div class="row">
+    <div class="col-lg-2"></div>
+    <div class="col-lg-8">
+        {% include "flash.html" %}
+    </div>
+</div>
+<div class="row">
+    <div class="col-lg-3"></div>
+    <div class="col-lg-6">
+        <form action="{{ url_for('mode.update', mode_id=existing_key) }}" method="post" role="form">
+        {{ form.hidden_tag() }}
+        <div class="form-group">
+            <label for="key">{{ form.key.label }}</label>
+            <input type="text" class="form-control" id="key" name="key" value="{{ existing_key }}" disabled>
+            <input type="hidden" class="form-control" id="key" name="key" value="{{ existing_key }}">
+            <br>
+            <label for="name">{{ form.name.label }}</label>
+            <input type="text" class="form-control" id="name" name="name" placeholder="Name" value="{{ existing_name }}">
+            <br>
+            <label for="guessables">{{ form.guessables.label }}</label>
+            <input type="text" class="form-control" id="guessables" name="guessables" data-role="tagsinput" value="{{ existing_guessables }}">
+        </div>
+        <center>
+            <button type="submit" class="btn btn-primary" id="update" name="update">Update</button>
+        </center>
+        </form>
+    </div>
+    <div class="col-lg-2"></div>
+</div>
+{% endblock %}
+
+{%block scripts %}
+<script src="{{ url_for('static', filename='vendor/bootstrap-tagsinput/bootstrap-tagsinput.min.js') }}"></script>
+{% endblock %}

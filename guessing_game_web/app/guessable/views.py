@@ -1,3 +1,4 @@
+import string
 from flask import request, flash, render_template, redirect, url_for
 from flask_login import login_required, current_user
 from guessing_game_web.app import db
@@ -23,7 +24,7 @@ def __get_guessable(guessable_id):
     return this_guessable
 
 def __add_guessable(this_form):
-    name = this_form.name.data
+    name = string.capwords(this_form.name.data)
     codes = this_form.codes.data.lower().split(',')
     codes = list(set(codes))
     matches = []
@@ -43,7 +44,7 @@ def __add_guessable(this_form):
 
 def __update_guessable(this_form):
     key = this_form.key.data
-    name = this_form.name.data
+    name = string.capwords(this_form.name.data)
     codes = this_form.codes.data.lower().split(',')
     codes = list(set(codes))
     matches = []
@@ -94,7 +95,7 @@ def add():
                 flash(result, 'danger')
                 success = False
             if success:
-                flash("Created {0}".format(this_form.name.data), 'success')
+                flash("Created {0}".format(string.capwords(this_form.name.data)), 'success')
                 return redirect(url_for('home.dashboard'))
         else:
             flash('All fields are required', 'danger')
@@ -118,7 +119,7 @@ def update(guessable_id):
                 flash(result, 'danger')
                 success = False
             if success:
-                flash("Updated {0}".format(this_form.name.data), 'success')
+                flash("Updated {0}".format(string.capwords(this_form.name.data)), 'success')
                 return redirect(url_for('home.dashboard'))
         else:
             flash('All fields are required', 'danger')

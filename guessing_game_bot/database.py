@@ -34,5 +34,4 @@ class Streamer(mongoengine.Document):
     participants = mongoengine.ListField(mongoengine.EmbeddedDocumentField(Participant))
     whitelist = mongoengine.ListField(mongoengine.EmbeddedDocumentField(WhitelistUser))
     blacklist = mongoengine.ListField(mongoengine.EmbeddedDocumentField(BlacklistUser))
-    multi_guess = mongoengine.DictField()
     user = mongoengine.ReferenceField('User')

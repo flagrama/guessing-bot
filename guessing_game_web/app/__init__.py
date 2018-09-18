@@ -37,4 +37,7 @@ def create_app(config_name):
     from guessing_game_web.app.guessable import guessable as guessable_blueprint
     app.register_blueprint(guessable_blueprint, url_prefix="/dashboard/guessable")
 
+    from guessing_game_web.app.mode import mode as mode_blueprint
+    app.register_blueprint(mode_blueprint, url_prefix="/dashboard/mode")
+
     return app

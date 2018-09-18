@@ -32,6 +32,7 @@ class DeleteMode(FlaskForm):
 
 class UpdateMode(FlaskForm):
     key = TextField('Guessable ID', validators=[validators.required()])
+    name = TextField('Mode Name', validators=[validators.required()])
     guessables = TextField('Mode Guessable Item Names', validators=[validators.required()])
     update = SubmitField('Update')
 
