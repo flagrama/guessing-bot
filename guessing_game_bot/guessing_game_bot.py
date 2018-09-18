@@ -57,7 +57,6 @@ class GuessingGameBot():
                 is_whitelist = self.__access_list.user_in_whitelist(user['user_id'])
             is_blacklist = self.__access_list.user_in_blacklist(user['user_id'])
             if command_name in self.commands['game_commands']:
-                print(command_name)
                 return self._do_game_command(command_name, user, command)
             if (command_name in self.commands['config_commands']
                     and is_mod or is_whitelist and not is_blacklist):

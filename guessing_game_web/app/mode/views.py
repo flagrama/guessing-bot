@@ -3,6 +3,7 @@ from flask import request, flash, render_template, redirect, url_for
 from flask_login import login_required, current_user
 from guessing_game_web.app import db
 from guessing_game_web.app.models import form, user, guessable as db_mode
+from guessing_game_web.app.guessable.views import get_guessable_by_name
 from . import mode
 
 def __get_user_mode(mode_id):
@@ -37,6 +38,10 @@ def __add_mode(this_form):
                 ', '.join(item_matches), string.capwords(this_mode.name))]
     if matches:
         return matches
+    for guessable in guessables:
+        if not get_guessable_by_name(guessable):
+            return "Guessable {0} not found in {1}'s guessables".format(
+                guessable, current_user.username)
     this_mode = db_mode.Mode(name=name, guessables=guessables).save()
     current_user.modes.append(this_mode)
     current_user.save()

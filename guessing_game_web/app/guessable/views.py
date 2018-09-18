@@ -5,6 +5,30 @@ from guessing_game_web.app import db
 from guessing_game_web.app.models import form, user, guessable as db_guessable
 from . import guessable
 
+def __get_user_guessable_id_by_name(guessable_name):
+    try:
+        user_guessable = user.User.objects( #pylint: disable=no-member
+            username=current_user.username, guessables__name=string.capwords(guessable_name))
+        for this_guessable in current_user.guessables:
+            if string.capwords(this_guessable.name) == string.capwords(guessable_name):
+                user_guessable = this_guessable.id
+                break
+    except (user.User.DoesNotExist, db.ValidationError): # pylint: disable=no-member
+        flash("Guessable {0} not found".format(string.capwords(guessable_name)), 'danger')
+        return None
+    return user_guessable
+
+def get_guessable_by_name(guessable_name):
+    guessable_id = __get_user_guessable_id_by_name(guessable_name)
+    if not guessable_id:
+        return None
+    try:
+        this_guessable = db_guessable.Guessable.objects.get(id=guessable_id) # pylint: disable=no-member
+    except (user.User.DoesNotExist, db.ValidationError): # pylint: disable=no-member
+        flash("Guessable {0} not found".format(string.capwords(guessable_name)), 'danger')
+        return None
+    return this_guessable
+
 def __get_user_guessable(guessable_id):
     try:
         user_guessable = user.User.objects( # pylint: disable=no-member
@@ -15,7 +39,8 @@ def __get_user_guessable(guessable_id):
     return user_guessable
 
 def __get_guessable(guessable_id):
-    __get_user_guessable(guessable_id)
+    if not __get_user_guessable(guessable_id):
+        return None
     try:
         this_guessable = db_guessable.Guessable.objects.get(id=guessable_id) # pylint: disable=no-member
     except (user.User.DoesNotExist, db.ValidationError): # pylint: disable=no-member
