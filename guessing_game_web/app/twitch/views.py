@@ -50,5 +50,5 @@ def finish_authorize(blueprint, token):
         user.save()
     # Login the user
     login_user(user)
-    flash('You have successfully been logged in.', 'success')
+    flash('You have been logged in.', 'success')
     return redirect(url_for('home.dashboard'))

@@ -28,7 +28,7 @@ def add_guessable(this_form):
         code_matches = set(this_guessable.codes).intersection(set(codes))
         if code_matches:
             matches += ["Guessable code(s) {0} already exists in {1}".format(
-                ','.join(code_matches), this_guessable.name)]
+                ', '.join(code_matches), this_guessable.name)]
     if matches:
         return matches
     this_guessable = db_guessable.Guessable(name=name, codes=codes).save()
@@ -49,7 +49,7 @@ def update_guessable(this_form):
         code_matches = set(this_guessable.codes).intersection(set(codes))
         if code_matches:
             matches += ["Guessable code(s) {0} already exists in {1}".format(
-                ','.join(code_matches), this_guessable.name)]
+                ', '.join(code_matches), this_guessable.name)]
     if matches:
         return matches
     this_guessable = get_guessable(this_form.key.data)
@@ -88,7 +88,7 @@ def add():
                 flash(result, 'danger')
                 success = False
             if success:
-                flash("Successfully created Guessable", 'success')
+                flash("Created {0}".format(this_form.name.data), 'success')
                 return redirect(url_for('home.dashboard'))
         else:
             flash('All fields are required', 'danger')
@@ -112,7 +112,7 @@ def update(guessable_id):
                 flash(result, 'danger')
                 success = False
             if success:
-                flash("Successfully updated {0}".format(this_form.name.data), 'success')
+                flash("Updated {0}".format(this_form.name.data), 'success')
                 return redirect(url_for('home.dashboard'))
         else:
             flash('All fields are required', 'danger')
@@ -132,5 +132,5 @@ def delete(guessable_id):
     result = delete_guessable(guessable_id)
     if not result:
         return redirect(url_for('home.logout'))
-    flash("Successfully deleted {0}".format(result), 'success')
+    flash("Deleted {0}".format(result), 'success')
     return redirect(url_for('home.dashboard'))
