@@ -46,7 +46,7 @@ def get_mode(mode_id):
     return this_mode
 
 def __add_mode(this_form):
-    name = string.capwords(this_form.name.data)
+    name = this_form.name.data.lower()
     guessables = this_form.guessables.data.split(',')
     guessables = list(set(string.capwords(i) for i in guessables))
     matches = []
@@ -70,7 +70,7 @@ def __add_mode(this_form):
 
 def __update_mode(this_form):
     key = this_form.key.data
-    name = this_form.name.data
+    name = this_form.name.data.lower()
     guessables = this_form.guessables.data.split(',')
     guessables = list(set(string.capwords(i) for i in guessables))
     matches = []
