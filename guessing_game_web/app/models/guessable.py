@@ -1,10 +1,10 @@
 from guessing_game_web.app import db
 
 class Guessable(db.Document):
-    name = db.StringField(required=True) # pylint: disable=no-member
-    codes = db.ListField(db.StringField(required=True), required=True) # pylint: disable=no-member
+    name = getattr(db, 'StringField')(required=True)
+    codes = getattr(db, 'ListField')(getattr(db, 'StringField')(required=True), required=True)
 
 class Mode(db.Document):
     """The mode database class."""
-    name = db.StringField(required=True) # pylint: disable=no-member
-    guessables = db.ListField(db.StringField(required=True), required=True) # pylint: disable=no-member
+    name = getattr(db, 'StringField')(required=True)
+    guessables = getattr(db, 'ListField')(getattr(db, 'StringField')(required=True), required=True)

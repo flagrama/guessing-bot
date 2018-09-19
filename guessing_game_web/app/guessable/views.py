@@ -14,7 +14,7 @@ def __get_user_guessable_id_by_name(guessable_name):
             if string.capwords(this_guessable.name) == string.capwords(guessable_name):
                 user_guessable = this_guessable.id
                 break
-    except (user.User.DoesNotExist, db.ValidationError): # pylint: disable=no-member
+    except (getattr(user.User, 'DoesNotExist'), getattr(db, 'ValidationError')):
         flash("Guessable {0} not found".format(string.capwords(guessable_name)), 'danger')
         return None
     return user_guessable
@@ -24,17 +24,17 @@ def get_guessable_by_name(guessable_name):
     if not guessable_id:
         return None
     try:
-        this_guessable = db_guessable.Guessable.objects.get(id=guessable_id) # pylint: disable=no-member
-    except (user.User.DoesNotExist, db.ValidationError): # pylint: disable=no-member
+        this_guessable = getattr(db_guessable.Guessable, 'objects').get(id=guessable_id)
+    except (getattr(user.User, 'DoesNotExist'), getattr(db, 'ValidationError')):
         flash("Guessable {0} not found".format(string.capwords(guessable_name)), 'danger')
         return None
     return this_guessable
 
 def __get_user_guessable(guessable_id):
     try:
-        user_guessable = user.User.objects( # pylint: disable=no-member
+        user_guessable = getattr(user.User, 'objects')(
             username=current_user.username, guessables__contains=guessable_id)
-    except (user.User.DoesNotExist, db.ValidationError): # pylint: disable=no-member
+    except (getattr(user.User, 'DoesNotExist'), getattr(db, 'ValidationError')):
         flash("Access Violation!", 'danger')
         return None
     return user_guessable
@@ -43,8 +43,8 @@ def __get_guessable(guessable_id):
     if not __get_user_guessable(guessable_id):
         return None
     try:
-        this_guessable = db_guessable.Guessable.objects.get(id=guessable_id) # pylint: disable=no-member
-    except (user.User.DoesNotExist, db.ValidationError): # pylint: disable=no-member
+        this_guessable = getattr(db_guessable.Guessable, 'objects').get(id=guessable_id)
+    except (getattr(user.User, 'DoesNotExist'), getattr(db, 'ValidationError')):
         flash("Access Violation!", 'danger')
         return None
     return this_guessable
@@ -102,7 +102,7 @@ def __delete_guessable(guessable_id):
     if user_mode_ids:
         for mode_id in user_mode_ids:
             try:
-                db_guessable.Mode.objects( # pylint: disable=no-member
+                getattr(db_guessable.Mode, 'objects')(
                     id=mode_id).update_one(
                         pull__guessables=this_guessable.name)
                 this_mode = mode_view.get_mode(mode_id)
@@ -111,10 +111,10 @@ def __delete_guessable(guessable_id):
                         user_mode = mode_view.get_user_mode(this_mode.id)
                         user_mode.update_one(pull__modes=this_mode)
                         this_mode.delete()
-            except db.ValidationError: # pylint: disable=no-member
+            except getattr(db, 'ValidationError'):
                 flash("Mode {0} not found".format(string.capwords(mode_id)), 'danger')
                 return False
-            except db_guessable.Mode.DoesNotExist: # pylint: disable=no-member
+            except getattr(db_guessable.Mode, 'DoesNotExist'):
                 continue
     existing_name = this_guessable.name
     user_guessable.update_one(pull__guessables=this_guessable)

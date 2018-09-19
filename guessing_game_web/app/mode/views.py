@@ -21,17 +21,17 @@ def get_modes_by_item_name(mode_item_name):
     these_modes = []
     for mode_id in mode_ids:
         try:
-            this_mode = db_mode.Mode.objects.get(id=mode_id) # pylint: disable=no-member
+            this_mode = getattr(db_mode.Mode, 'objects').get(id=mode_id)
             these_modes += [str(this_mode.id)]
-        except (user.User.DoesNotExist, db.ValidationError): # pylint: disable=no-member
+        except (getattr(user.User, 'DoesNotExist'), getattr(db, 'ValidationError')):
             return None
     return these_modes
 
 def get_user_mode(mode_id):
     try:
-        user_mode = user.User.objects( # pylint: disable=no-member
+        user_mode = getattr(user.User, 'objects')(
             username=current_user.username, modes__contains=mode_id)
-    except (user.User.DoesNotExist, db.ValidationError): # pylint: disable=no-member
+    except (getattr(user.User, 'DoesNotExist'), getattr(db, 'ValidationError')):
         flash("Access Violation!", 'danger')
         return None
     return user_mode
@@ -39,8 +39,8 @@ def get_user_mode(mode_id):
 def get_mode(mode_id):
     get_user_mode(mode_id)
     try:
-        this_mode = db_mode.Mode.objects.get(id=mode_id) # pylint: disable=no-member
-    except (user.User.DoesNotExist, db.ValidationError): # pylint: disable=no-member
+        this_mode = getattr(db_mode.Mode, 'objects').get(id=mode_id)
+    except (getattr(user.User, 'DoesNotExist'), getattr(db, 'ValidationError')):
         flash("Access Violation!", 'danger')
         return None
     return this_mode

@@ -2,7 +2,7 @@ from datetime import datetime
 from guessing_game_web.app import db
 
 class Token(db.Document):
-    provider = db.StringField() # pylint: disable=no-member
-    created_at = db.DateTimeField(default=datetime.utcnow) # pylint: disable=no-member
-    token = db.DictField() # pylint: disable=no-member
-    user = db.ReferenceField('User') # pylint: disable=no-member
+    provider = getattr(db, 'StringField')()
+    created_at = getattr(db, 'DateTimeField')(default=datetime.utcnow)
+    token = getattr(db, 'DictField')()
+    user = getattr(db, 'ReferenceField')('User')
