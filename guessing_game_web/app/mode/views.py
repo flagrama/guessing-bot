@@ -121,7 +121,7 @@ def add():
                 flash(result, 'danger')
                 success = False
             if success:
-                flash("Created {0}".format(this_form.name.data), 'success')
+                flash("Created {0}".format(this_form.name.data.lower()), 'success')
                 return redirect(url_for('home.dashboard'))
         else:
             flash('All fields are required', 'danger')
@@ -145,7 +145,7 @@ def update(mode_id):
                 flash(result, 'danger')
                 success = False
             if success:
-                flash("Updated {0}".format(this_form.name.data), 'success')
+                flash("Updated {0}".format(this_form.name.data.lower()), 'success')
                 return redirect(url_for('home.dashboard'))
         else:
             flash('All fields are required', 'danger')
