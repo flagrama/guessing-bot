@@ -102,18 +102,19 @@ def __delete_guessable(guessable_id):
     if user_mode_ids:
         for mode_id in user_mode_ids:
             try:
-                db_guessable.Mode.objects(id=mode_id).update_one(pull__guessables=this_guessable.name)
+                db_guessable.Mode.objects( # pylint: disable=no-member
+                    id=mode_id).update_one(
+                        pull__guessables=this_guessable.name)
                 this_mode = mode_view.get_mode(mode_id)
                 if this_mode:
-                    if len(this_mode.guessables) <= 0:
-                        print(len(this_mode.guessables))
+                    if not this_mode.guessables:
                         user_mode = mode_view.get_user_mode(this_mode.id)
                         user_mode.update_one(pull__modes=this_mode)
                         this_mode.delete()
-            except db.ValidationError:
+            except db.ValidationError: # pylint: disable=no-member
                 flash("Mode {0} not found".format(string.capwords(mode_id)), 'danger')
                 return False
-            except db_guessable.Mode.DoesNotExist:
+            except db_guessable.Mode.DoesNotExist: # pylint: disable=no-member
                 continue
     existing_name = this_guessable.name
     user_guessable.update_one(pull__guessables=this_guessable)
