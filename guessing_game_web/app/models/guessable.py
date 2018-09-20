@@ -10,8 +10,6 @@ class Mode(db.Document):
     guessables = getattr(db, 'ListField')(getattr(db, 'StringField')(required=True), required=True)
 
 class OpenGuess(db.Document):
-    name = db.StringField(required=Tru
-class OpenGuess(db.Document):
     name = db.StringField(required=True) # pylint: disable=no-member
     guessables = db.ListField(db.ReferenceField(Guessable), required=True) # pylint: disable=no-member
     locations = db.ListField(db.ReferenceField(Guessable), required=True) # pylint: disable=no-member
