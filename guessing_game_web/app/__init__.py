@@ -40,4 +40,7 @@ def create_app(config_name):
     from guessing_game_web.app.mode import mode as mode_blueprint
     app.register_blueprint(mode_blueprint, url_prefix="/dashboard/mode")
 
+    from guessing_game_web.app.openguess import openguess as openguess_blueprint
+    app.register_blueprint(openguess_blueprint, url_prefix="/dashboard/openguess")
+
     return app

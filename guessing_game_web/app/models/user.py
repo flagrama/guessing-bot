@@ -7,12 +7,12 @@ class User(db.Document):
     modes = getattr(db, 'ListField')(getattr(db, 'ReferenceField')('Mode'))
     guessables = getattr(db, 'ListField')(getattr(db, 'ReferenceField')('Guessable'))
     streamer = getattr(db, 'ReferenceField')('Streamer')
-    token = getattr(db, 'ReferenceField')('Token')
+    login_token = getattr(db, 'ReferenceField')('Token')
 
     def __repr__(self):
         return '<User %r>' % self.username
     def is_authenticated(self):
-        if self.token:
+        if self.login_token:
             return True
         return False
     def is_active(self):

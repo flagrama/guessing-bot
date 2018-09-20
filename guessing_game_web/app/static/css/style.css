@@ -18,7 +18,38 @@ footer.sticky-footer {
 }
 
 .sidebar {
-    min-height: calc(100vh - 130px)
+    min-height: calc(100vh - 8em)
+}
+
+#report_bug_sidebar {
+    position: absolute;
+    width: 200px;
+    margin-left: 0.75em;
+    bottom: 5em;
+}
+
+.sidebar-toggled #report_bug_sidebar {
+    width: 65px;
+}
+
+@media (max-width: 767px) {
+    .sidebar-toggled #report_bug_sidebar {
+        display:none;
+    }
+    #report_bug_button {
+        width: 65px;
+    }
+    #report_bug_report_text {
+        display: none;
+    }
+}
+
+#report_bug_button {
+    white-space: normal;
+}
+
+.sidebar-toggled #report_bug_report_text {
+    display: none;
 }
 
 .push {

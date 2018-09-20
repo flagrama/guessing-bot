@@ -1,52 +1,26 @@
 import string
 from flask import request, flash, render_template, redirect, url_for
 from flask_login import login_required, current_user
-from guessing_game_web.app import db
-from guessing_game_web.app.models import form, user, guessable as db_guessable
+import flask_mongoengine as mongoengine
+from guessing_game_web.app.models import exception, form, user, guessable as db_guessable
 from guessing_game_web.app.mode import views as mode_view
 from . import guessable
 
-def __get_user_guessable_id_by_name(guessable_name):
-    try:
-        user_guessable = user.User.objects( #pylint: disable=no-member
-            username=current_user.username, guessables__name=string.capwords(guessable_name))
-        for this_guessable in current_user.guessables:
-            if string.capwords(this_guessable.name) == string.capwords(guessable_name):
-                user_guessable = this_guessable.id
-                break
-    except (getattr(user.User, 'DoesNotExist'), getattr(db, 'ValidationError')):
-        flash("Guessable {0} not found".format(string.capwords(guessable_name)), 'danger')
-        return None
-    return user_guessable
-
-def get_guessable_by_name(guessable_name):
-    guessable_id = __get_user_guessable_id_by_name(guessable_name)
-    if not guessable_id:
-        return None
-    try:
-        this_guessable = getattr(db_guessable.Guessable, 'objects').get(id=guessable_id)
-    except (getattr(user.User, 'DoesNotExist'), getattr(db, 'ValidationError')):
-        flash("Guessable {0} not found".format(string.capwords(guessable_name)), 'danger')
-        return None
-    return this_guessable
-
-def __get_user_guessable(guessable_id):
-    try:
-        user_guessable = getattr(user.User, 'objects')(
-            username=current_user.username, guessables__contains=guessable_id)
-    except (getattr(user.User, 'DoesNotExist'), getattr(db, 'ValidationError')):
-        flash("Access Violation!", 'danger')
-        return None
-    return user_guessable
+def __get_guessable_id_by_name(guessable_name):
+    named_guessable = None
+    for this_guessable in current_user.guessables:
+        if string.capwords(this_guessable.name) == string.capwords(guessable_name):
+            named_guessable = this_guessable.id
+            break
+    return named_guessable
 
 def __get_guessable(guessable_id):
-    if not __get_user_guessable(guessable_id):
-        return None
-    try:
-        this_guessable = getattr(db_guessable.Guessable, 'objects').get(id=guessable_id)
-    except (getattr(user.User, 'DoesNotExist'), getattr(db, 'ValidationError')):
-        flash("Access Violation!", 'danger')
-        return None
+    if not getattr(user.User, 'objects')(
+            username=current_user.username, guessables__contains=guessable_id):
+        raise exception.UserAccessException
+    this_guessable = getattr(db_guessable.Guessable, 'objects').get(id=guessable_id)
+    if this_guessable:
+        return this_guessable
     return this_guessable
 
 def __add_guessable(this_form):
@@ -85,48 +59,43 @@ def __update_guessable(this_form):
                 ', '.join(code_matches), this_guessable.name)]
     if matches:
         return matches
-    this_guessable = __get_guessable(this_form.key.data)
-    if not this_guessable:
-        return False
-    this_guessable.update(set__name=name, set__codes=codes)
-    this_guessable.save()
+    __get_guessable(this_form.key.data).update(name=name, codes=codes)
     current_user.save()
     return True
 
 def __delete_guessable(guessable_id):
     this_guessable = __get_guessable(guessable_id)
-    user_guessable = __get_user_guessable(guessable_id)
-    if not this_guessable or not user_guessable:
-        return False
     user_mode_ids = mode_view.get_modes_by_item_name(this_guessable.name)
     if user_mode_ids:
         for mode_id in user_mode_ids:
-            try:
-                getattr(db_guessable.Mode, 'objects')(
-                    id=mode_id).update_one(
-                        pull__guessables=this_guessable.name)
-                this_mode = mode_view.get_mode(mode_id)
-                if this_mode:
-                    if not this_mode.guessables:
-                        user_mode = mode_view.get_user_mode(this_mode.id)
-                        user_mode.update_one(pull__modes=this_mode)
-                        this_mode.delete()
-            except getattr(db, 'ValidationError'):
-                flash("Mode {0} not found".format(string.capwords(mode_id)), 'danger')
-                return False
-            except getattr(db_guessable.Mode, 'DoesNotExist'):
-                continue
+            getattr(db_guessable.Mode, 'objects')(
+                id=mode_id).update_one(
+                    pull__guessables=this_guessable.name)
+            this_mode = mode_view.get_mode(mode_id)
+            if this_mode:
+                if not this_mode.guessables:
+                    getattr(user.User, 'objects')(
+                        id=current_user.id, modes=this_mode).update_one(
+                            pull__modes=this_mode)
+                    this_mode.delete()
     existing_name = this_guessable.name
-    user_guessable.update_one(pull__guessables=this_guessable)
+    getattr(user.User, 'objects')(
+        id=current_user.id).update_one(
+            pull__guessables=this_guessable)
     this_guessable.delete()
     current_user.save()
     return existing_name
+
+def get_guessable_by_name(guessable_name):
+    guessable_id = __get_guessable_id_by_name(guessable_name)
+    if not guessable_id:
+        return None
+    return __get_guessable(guessable_id)
 
 @guessable.route('add', methods=['GET', 'POST'])
 @login_required
 def add():
     this_form = form.AddGuessable()
-
     if request.method == 'POST':
         success = True
         if this_form.validate():
@@ -143,14 +112,12 @@ def add():
                 return redirect(url_for('home.dashboard'))
         else:
             flash('All fields are required', 'danger')
-
     return render_template('guessable/add.html', title="Add Guessable", form=this_form)
 
 @guessable.route('update/<guessable_id>', methods=['GET', 'POST'])
 @login_required
 def update(guessable_id):
     this_form = form.UpdateGuessable()
-
     if request.method == 'POST':
         success = True
         if this_form.validate():
@@ -167,10 +134,12 @@ def update(guessable_id):
                 return redirect(url_for('home.dashboard'))
         else:
             flash('All fields are required', 'danger')
-
-    this_guessable = __get_guessable(guessable_id)
-    if not this_guessable:
-        return redirect(url_for('home.logout'))
+    try:
+        this_guessable = __get_guessable(guessable_id)
+    except (mongoengine.DoesNotExist,
+            mongoengine.ValidationError,
+            exception.UserAccessException):
+        return redirect(url_for('home.dashboard'))
     return render_template(
         'guessable/update.html',
         title="Update {0}".format(this_guessable.name),
@@ -182,8 +151,11 @@ def update(guessable_id):
 @guessable.route('delete/<guessable_id>', methods=['GET'])
 @login_required
 def delete(guessable_id):
-    result = __delete_guessable(guessable_id)
-    if not result:
-        return redirect(url_for('home.logout'))
+    try:
+        result = __delete_guessable(guessable_id)
+    except (mongoengine.DoesNotExist,
+            mongoengine.ValidationError,
+            exception.UserAccessException):
+        return redirect(url_for('home.dashboard'))
     flash("Deleted {0}".format(result), 'success')
     return redirect(url_for('home.dashboard'))

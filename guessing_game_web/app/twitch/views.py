@@ -24,7 +24,7 @@ def finish_authorize(blueprint, token):
         user = getattr(User, 'objects').get(streamer_id=streamer_id)
         token = Token(provider="twitch", token=token)
         token.save()
-        user.token = token
+        user.login_token = token
         user.save()
         token.user = user
         token.save()
@@ -32,7 +32,7 @@ def finish_authorize(blueprint, token):
         user = User(streamer_id=streamer_id, username=username, email=email)
         token = Token(provider="twitch", token=token)
         token.save()
-        user.token = token
+        user.login_token = token
         user.save()
         token.user = user
         token.save()

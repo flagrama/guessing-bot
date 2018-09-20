@@ -1,6 +1,6 @@
 from flask import render_template, redirect, url_for, flash, session
 from flask_login import login_required, current_user, logout_user
-
+import mongoengine
 from . import home
 
 @home.route('/')
@@ -21,11 +21,13 @@ def dashboard():
 @home.route("/logout/")
 def logout():
     try:
-        current_user.token.delete()
-        current_user.token.save()
-        current_user.token = None
+        current_user.login_token.delete()
+        current_user.login_token.save()
+        current_user.login_token = None
         current_user.save()
         logout_user()
-    except AttributeError:
+    except (AttributeError, mongoengine.DoesNotExist):
+        current_user.login_token = None
+        current_user.save()
         session.clear()
     return redirect(url_for('home.homepage'))
