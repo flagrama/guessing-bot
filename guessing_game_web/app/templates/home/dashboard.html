@@ -16,17 +16,17 @@
     {% if current_user.guessables|length > 0 %}
     <div class="card-body">
         <div class="d-flex">
-            <div class="col-lg-1 col-md-1 pl-lg-0 text-nowrap order-1 text-center">
+            <div class="col-4 px-0 col-sm-3 mr-sm-4 col-md-2 mr-md-0 col-lg-1 mr-lg-5 order-0">
                 <strong>Modify</strong>
             </div>
-            <div class="col-lg-1 col-md-3 text-nowrap pl-md-4 pl-lg-5 pr-md-5 order-2 text-center">
+            <div class="col-4 px-0 col-md-2 order-1">
                 <strong>Name</strong>
             </div>
-            <div class="col-lg-10 col-md-7 px-md-0 px-lg-2 order-2 text-center">
+            <div class="col-4 px-0 col-md-8 order-2">
                 <strong>Codes</strong>
             </div>
         </div>
-        <hr class="my-2">
+        <hr>
         {% for guessable in current_user.guessables %}
         <div class="d-flex">
             <div class="px-2 order-1">
@@ -66,17 +66,17 @@
     {% if current_user.modes|length > 0 %}
     <div class="card-body">
         <div class="d-flex">
-            <div class="col-lg-1 col-md-1 pl-lg-0 text-nowrap order-1 text-center">
+            <div class="col-4 px-0 col-sm-3 mr-sm-4 col-md-2 mr-md-0 col-lg-1 mr-lg-5 order-0">
                 <strong>Modify</strong>
             </div>
-            <div class="col-lg-1 col-md-3 text-nowrap pl-md-4 pl-lg-5 pr-md-5 order-2 text-center">
+            <div class="col-4 px-0 col-md-2 order-1">
                 <strong>Name</strong>
             </div>
-            <div class="col-lg-10 col-md-7 px-md-0 px-lg-2 order-2 text-center">
+            <div class="col-4 px-0 col-md-8 order-2">
                 <strong>Items</strong>
             </div>
         </div>
-        <hr class="my-2">
+        <hr>
         {% for mode in current_user.modes %}
         <div class="d-flex">
             <div class="px-2 order-1">
