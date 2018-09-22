@@ -2,30 +2,43 @@ import string
 from flask import request, flash, render_template, redirect, url_for
 from flask_login import login_required, current_user
 from guessing_game_web.app import db
-from guessing_game_web.app.models import form, user, guessable as db_openguess
+from guessing_game_web.app.models import exception, form, user, guessable as db_openguess
 from guessing_game_web.app.openguess import views as openguess_view
 from . import openguess
 
-def get_user_openguess(openguess_id):
-    try:
-        user_openguess = getattr(user.User, 'objects')(
-            username=current_user.username, openguesses__contains=openguess_id)
-    except (getattr(user.User, 'DoesNotExist'), getattr(db, 'ValidationError')):
-        flash("Access Violation!", 'danger')
-        return None
-    return user_openguess
-
 def get_openguess(openguess_id):
-    get_user_openguess(openguess_id)
-    try:
-        this_openguess = getattr(db_openguess.OpenGuess, 'objects').get(id=openguess_id)
-    except (getattr(user.User, 'DoesNotExist'), getattr(db, 'ValidationError')):
-        flash("Access Violation!", 'danger')
-        return None
+    if not getattr(user.User, 'objects')(
+            username=current_user.username, open_guesses__contains=openguess_id):
+        raise exception.UserAccessException
+    this_openguess = getattr(db_openguess.OpenGuess, 'objects').get(id=openguess_id)
     return this_openguess
 
 def __add_openguess(this_form):
     pass
+    # name = this_form.name.data.lower()
+    # guessables = this_form.guessables.data.split(',')
+    # guessables = list(set(string.capwords(i) for i in guessables))
+    # matches = []
+    # not_found = []
+    # for this_mode in current_user.modes:
+    #     if string.capwords(this_mode.name) == string.capwords(name):
+    #         return "Mode name {0} already exists".format(string.capwords(name))
+    #     item_matches = set(this_mode.guessables).intersection(set(guessables))
+    #     if item_matches:
+    #         matches += ["Mode item(s) {0} already exists in {1}".format(
+    #             ', '.join(item_matches), string.capwords(this_mode.name))]
+    # if matches:
+    #     return matches
+    # for guessable in guessables:
+    #     if not guessable_view.get_guessable_by_name(guessable):
+    #         not_found += ["Guessable {0} not found".format(
+    #             guessable)]
+    # if not_found:
+    #     return not_found
+    # this_mode = db_mode.Mode(name=name, guessables=guessables).save()
+    # current_user.modes.append(this_mode)
+    # current_user.save()
+    # return True
 
 def __update_openguess(this_form):
     pass

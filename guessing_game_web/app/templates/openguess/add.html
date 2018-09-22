@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block css %}
+<link href="{{ url_for('static', filename='vendor/bootstrap-tagsinput/bootstrap-tagsinput.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+<h1 class="page-header">{{ title }}</h1>
+<hr>
+<div class="row">
+    <div class="col-lg-2"></div>
+    <div class="col-lg-8">
+        {% include "flash.html" %}
+    </div>
+</div>
+<div class="row">
+    <div class="col-lg-3">
+    </div>
+    <div class="col-lg-6">
+        <form action="{{ url_for('openguess.add') }}" method="post" role="form">
+        {{ form.hidden_tag() }}
+        <div class="form-group">
+            {{ form.name.label }}
+            <input type="text" class="form-control" id="name" name="name" placeholder="Name">
+            <br>
+            <div class="form-group form-group-border border rounded" id="guessable-fieldset" data-toggle="fieldset">
+                <div class="row">
+                    <div class="col-lg-3">
+                        <label class="form-group-header" for="guessables">
+                            Guessables
+                        </label>
+                    </div>
+                    <div class="col-lg-6"></div>
+                    <div class="col-lg-3"><button class="btn btn-success form-group-header" type="button" data-toggle="fieldset-add-row" data-target="#guessable-fieldset">New</button></div>
+                </div>
+                {% for guessable in form.guessables %}
+                <div class="form-row form-group-row border-bottom" data-toggle="fieldset-entry" {% if loop.index0==0 %}style="display:none;"{% endif %}>
+                        {{ guessable.guessable_name.label }}
+                        <input id="guessables-0-guessable_name" name="guessables-0-guessable_name" required type="text" class="form-control" placeholder="Guessable Name">
+                    <br>
+                        {{ guessable.codes.label }}
+
+                        <input id="guessables-0-codes" name="guessables-0-codes" required type="text" class="form-control" data-role="tagsinput" style="display: none;">
+                    <button class="btn btn-danger form-group-remove-btn" type="button" data-toggle="fieldset-remove-row" id="guessable-{{loop.index0}}-remove">Remove</button>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="form-group form-group-border border rounded" id="location-fieldset" data-toggle="fieldset">
+                <div class="row">
+                    <div class="col-lg-3">
+                        <label class="form-group-header" for="locations">
+                            Locations
+                        </label>
+                    </div>
+                    <div class="col-lg-6"></div>
+                    <div class="col-lg-3"><button class="btn btn-success form-group-header" type="button" data-toggle="fieldset-add-row" data-target="#location-fieldset">New</button></div>
+                </div>
+                {% for location in form.locations %}
+                <div class="form-row form-group-row border-bottom" data-toggle="fieldset-entry" {% if loop.index0==0 %}style="display:none;"{% endif %}>
+                    {{ location.guessable_name.label }}
+                    <input id="locations-0-guessable_name" name="locations-0-guessable_name" required type="text" class="form-control" placeholder="Location Name">
+                <br>
+                    {{ location.codes.label }}
+                    <input id="locations-0-codes" name="lcoations-0-codes" required type="text" class="form-control" data-role="tagsinput" style="display: none;">
+                <button class="btn btn-danger form-group-remove-btn" type="button" data-toggle="fieldset-remove-row" id="location-{{loop.index0}}-remove">Remove</button>
+            </div>
+            {% endfor %}
+            </div>
+        </div>
+        <center>
+            <button type="submit" class="btn btn-primary" id="add" name="add">Add</button>
+        </center>
+        </form>
+    </div>
+    <div class="col-lg-2"></div>
+</div>
+{% endblock %}
+
+{%block scripts %}
+<script src="{{ url_for('static', filename='vendor/bootstrap-tagsinput/bootstrap-tagsinput.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dynamicForm.js') }}"></script>
+{% endblock %}
