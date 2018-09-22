@@ -5,9 +5,8 @@ $(function() {
         //Add new entry
         $this.find("button[data-toggle=fieldset-add-row]").click(function() {
             var target = $($(this).data("target"));
-            var oldrow = target.find("[data-toggle=fieldset-entry]:last");
+            var oldrow = target.find("[data-toggle=fieldset-entry]:first");
             var row = oldrow.clone(true, true);
-            console.log(row.find(":input")[0]);
             var elem_id = row.find(":input")[0].id;
             var elem_num = parseInt(elem_id.replace(/.*-(\d{1,4})-.*/m, '$1')) + 1;
             row.attr('data-id', elem_num);
@@ -15,19 +14,16 @@ $(function() {
                 if($(this).parent().attr('class').includes("bootstrap-tagsinput")) {
                     if($(this).parent().attr('class').includes("sr-only")) {
                         $(this).parent().remove();
-                        return;
                     } else {
                         $(this).parent().tagsinput('refresh');
-                        console.log('refreshed tags');
                     }
                     return;
                 }
-                console.log(this);
                 var id = $(this).attr('id').replace('-' + (elem_num - 1) + '-', '-' + (elem_num) + '-');
                 $(this).attr('name', id).attr('id', id).val('').removeAttr("checked");
             });
-            row.show();
-            oldrow.after(row);
+            row.css('display', 'none').fadeIn();
+            oldrow.before(row);
             oldrow.find(":input").each(function() {
                 if($(this).parent().attr('class').includes("bootstrap-tagsinput sr-only")) {
                     $(this).parent().remove();
@@ -39,7 +35,9 @@ $(function() {
         $this.find("button[data-toggle=fieldset-remove-row]").click(function() {
             if($this.find("[data-toggle=fieldset-entry]").length > 1) {
                 var thisRow = $(this).closest("[data-toggle=fieldset-entry]");
-                thisRow.remove();
+                thisRow.fadeOut(function(){
+                    thisRow.remove();
+                })
             }
         });
     });
