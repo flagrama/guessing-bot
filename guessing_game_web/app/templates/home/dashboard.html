@@ -16,33 +16,35 @@
     {% if current_user.guessables|length > 0 %}
     <div class="card-body">
         <div class="d-flex">
-            <div class="col-4 px-0 col-sm-3 mr-sm-4 col-md-2 mr-md-0 col-lg-1 mr-lg-5 order-0">
+            <div class="col-4 col-sm-3 col-md-2 text-center text-nowrap order-0">
                 <strong>Modify</strong>
             </div>
-            <div class="col-4 px-0 col-md-2 order-1">
+            <div class="col-4 col-sm-3 col-md-2 text-center text-nowrap order-1">
                 <strong>Name</strong>
             </div>
-            <div class="col-4 px-0 col-md-8 order-2">
+            <div class="col-4 col-sm-6 col-md-8 text-center text-nowrap order-2">
                 <strong>Codes</strong>
             </div>
         </div>
         <hr>
         {% for guessable in current_user.guessables %}
         <div class="d-flex">
-            <div class="px-2 order-1">
-                <a href="{{ url_for('guessable.update', guessable_id=guessable.id) }}">
-                    <span class="fas fa-edit fa-fw"></span>
-                </a>
+            <div class="col-4 col-sm-3 col-md-2 justify-content-center d-flex">
+                <div class="px-1 mx-1 order-1">
+                    <a href="{{ url_for('guessable.update', guessable_id=guessable.id) }}">
+                        <span class="fas fa-edit fa-fw"></span>
+                    </a>
+                </div>
+                <div class="px-1 mx-1 order-2">
+                    <a href="{{ url_for('guessable.delete', guessable_id=guessable.id) }}">
+                        <span class="fas fa-trash fa-fw"></span>
+                    </a>
+                </div>
             </div>
-            <div class="px-2 order-2">
-                <a href="{{ url_for('guessable.delete', guessable_id=guessable.id) }}">
-                    <span class="fas fa-trash fa-fw"></span>
-                </a>
-            </div>
-            <div class="col-lg-2 col-md-2 px-2 order-3">
+            <div class="col-4 col-sm-3 col-md-2 order-3">
                 <p class="text-center">{{ guessable.name }}</p>
             </div>
-            <div class="col-lg-9 col-md-8 px-2 order-4">
+            <div class="col-4 col-sm-6 col-md-8 order-4">
                 {{ ', '.join(guessable.codes) }}
             </div>
         </div>
@@ -50,7 +52,6 @@
     </div>
     {% endif %}
 </div>
-
 
 <div class="card mb-3">
     <div class="card-header">
@@ -66,34 +67,90 @@
     {% if current_user.modes|length > 0 %}
     <div class="card-body">
         <div class="d-flex">
-            <div class="col-4 px-0 col-sm-3 mr-sm-4 col-md-2 mr-md-0 col-lg-1 mr-lg-5 order-0">
+            <div class="col-4 col-sm-3 col-md-2 text-center text-nowrap order-0">
                 <strong>Modify</strong>
             </div>
-            <div class="col-4 px-0 col-md-2 order-1">
+            <div class="col-4 col-sm-3 col-md-2 text-center text-nowrap order-1">
                 <strong>Name</strong>
             </div>
-            <div class="col-4 px-0 col-md-8 order-2">
+            <div class="col-4 col-sm-6 col-md-8 text-center text-nowrap order-2">
                 <strong>Items</strong>
             </div>
         </div>
         <hr>
         {% for mode in current_user.modes %}
         <div class="d-flex">
-            <div class="px-2 order-1">
-                <a href="{{ url_for('mode.update', mode_id=mode.id) }}">
-                    <span class="fas fa-edit fa-fw"></span>
-                </a>
+            <div class="col-4 col-sm-3 col-md-2 justify-content-center d-flex">
+                <div class="px-1 mx-1 order-1">
+                    <a href="{{ url_for('mode.update', mode_id=mode.id) }}">
+                        <span class="fas fa-edit fa-fw"></span>
+                    </a>
+                </div>
+                <div class="px-1 mx-1 order-2">
+                    <a href="{{ url_for('mode.delete', mode_id=mode.id) }}">
+                        <span class="fas fa-trash fa-fw"></span>
+                    </a>
+                </div>
             </div>
-            <div class="px-2 order-2">
-                <a href="{{ url_for('mode.delete', mode_id=mode.id) }}">
-                    <span class="fas fa-trash fa-fw"></span>
-                </a>
-            </div>
-            <div class="col-lg-2 col-md-2 px-2 order-3">
+            <div class="col-4 col-sm-3 col-md-2 order-3">
                 <p class="text-center">{{ mode.name }}</p>
             </div>
-            <div class="col-lg-9 col-md-8 px-2 order-4">
+            <div class="col-4 col-sm-6 col-md-8 order-4">
                 {{ ', '.join(mode.guessables) }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="card mb-3">
+    <div class="card-header">
+        <div class="d-flex">
+            <div class="p-2 order-1">Open Form Guessables</div>
+            <div class="p-2 order-12 ml-auto">
+                <a href="{{ url_for('openguess.add') }}">
+                    Add
+                </a>
+            </div>
+        </div>
+    </div>
+    {% if current_user.openguesses|length > 0 %}
+    <div class="card-body">
+        <div class="d-flex">
+            <div class="text-center text-nowrap order-0">
+                <strong>Modify</strong>
+            </div>
+            <div class="text-center text-nowrap order-1">
+                <strong>Name</strong>
+            </div>
+            <div class="text-center text-nowrap order-2">
+                <strong>Codes</strong>
+            </div>
+        </div>
+        <hr>
+        {% for openguess in current_user.openguesses %}
+        <div class="d-flex">
+            <div class="justify-content-center d-flex">
+                <div class="px-1 mx-1 order-1">
+                    <a href="{{ url_for('openguess.update', openguess=openguess.id) }}">
+                        <span class="fas fa-edit fa-fw"></span>
+                    </a>
+                </div>
+                <div class="px-1 mx-1 order-2">
+                    <a href="{{ url_for('openguess.delete', openguess=openguess.id) }}">
+                        <span class="fas fa-trash fa-fw"></span>
+                    </a>
+                </div>
+            </div>
+            <div class="order-3">
+                <p class="text-center">{{ openguess.name }}</p>
+            </div>
+            <div class="order-4">
+                {{ ', '.join(openguess.guessables) }}
+            </div>
+            <div class="order-5">
+                {{ ', '.join(openguess.locations) }}
             </div>
         </div>
         {% endfor %}

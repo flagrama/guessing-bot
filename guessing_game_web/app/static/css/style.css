@@ -31,12 +31,12 @@ footer.sticky-footer {
     bottom: 5em;
 }
 
-.sidebar-toggled #report_bug_sidebar {
+.sidebar-toggled#report_bug_sidebar {
     width: 65px;
 }
 
 @media (max-width: 767px) {
-    .sidebar-toggled #report_bug_sidebar {
+    .sidebar-toggled#report_bug_sidebar {
         display:none;
     }
     #report_bug_button {
@@ -51,7 +51,7 @@ footer.sticky-footer {
     white-space: normal;
 }
 
-.sidebar-toggled #report_bug_report_text {
+.sidebar-toggled#report_bug_report_text {
     display: none;
 }
 
@@ -90,12 +90,20 @@ button.form-group-header {
     margin: -2em 0em 2.5em 0em;
 }
 
-.form-group-row input, .form-group-row .bootstrap-tagsinput {
+.form-group-row input, .form-group-row.bootstrap-tagsinput {
     margin-bottom:1em;
 }
 
 .form-group-remove-btn {
     width: 100%;
+}
+
+form {
+    margin-bottom: 1em;
+}
+
+form button[type=submit] {
+    margin-top: -1em;
 }
 
 /* Theme leftovers */
