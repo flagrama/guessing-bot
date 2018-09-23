@@ -112,7 +112,7 @@ def add():
                 return redirect(url_for('home.dashboard'))
         else:
             flash('All fields are required', 'danger')
-    return render_template('guessable/add.html', title="Add Guessable", form=this_form)
+    return render_template('guessable/add.html', title="Add Guessable", tab="dashboard", form=this_form)
 
 @guessable.route('update/<guessable_id>', methods=['GET', 'POST'])
 @login_required
@@ -143,6 +143,7 @@ def update(guessable_id):
     return render_template(
         'guessable/update.html',
         title="Update {0}".format(this_guessable.name),
+        tab="dashboard",
         existing_key=this_guessable.id,
         existing_name=this_guessable.name,
         existing_codes=','.join(this_guessable.codes),

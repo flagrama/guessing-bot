@@ -68,7 +68,7 @@ def add():
         else:
             flash('All fields are required', 'danger')
 
-    return render_template('openguess/add.html', title="Add Open Guess", form=this_form)
+    return render_template('openguess/add.html', title="Add Open Guess", tab="dashboard", form=this_form)
 
 @openguess.route('update/<openguess_id>', methods=['GET', 'POST'])
 @login_required
@@ -98,6 +98,7 @@ def update(openguess_id):
     return render_template(
         'openguess/update.html',
         title="Update {0}".format(this_openguess.name),
+        tab="dashboard",
         existing_key=this_openguess.id,
         existing_name=this_openguess.name,
         existing_guessables=','.join(this_openguess.guessables),

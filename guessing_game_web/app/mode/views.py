@@ -115,7 +115,7 @@ def add():
                 return redirect(url_for('home.dashboard'))
         else:
             flash('All fields are required', 'danger')
-    return render_template('mode/add.html', title="Add Mode", form=this_form)
+    return render_template('mode/add.html', title="Add Mode", tab="dashboard", form=this_form)
 
 @mode.route('update/<mode_id>', methods=['GET', 'POST'])
 @login_required
@@ -153,6 +153,7 @@ def update(mode_id):
     return render_template(
         'mode/update.html',
         title="Update {0}".format(this_mode.name),
+        tab="dashboard",
         existing_key=this_mode.id,
         existing_name=this_mode.name,
         existing_guessables=','.join(this_mode.guessables),
