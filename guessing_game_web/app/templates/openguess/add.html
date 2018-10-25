@@ -34,14 +34,14 @@
                     <div class="col-lg-3"><button class="btn btn-success form-group-header" type="button" data-toggle="fieldset-add-row" data-target="#guessable-fieldset">New</button></div>
                 </div>
                 {% for guessable in form.guessables %}
-                <div class="form-row form-group-row border-bottom" data-toggle="fieldset-entry" {% if loop.index0==0 %}style="display:none;"{% endif %}>
+                <div class="form-row form-group-row border-bottom" data-toggle="fieldset-entry" data-id="0">
                         {{ guessable.guessable_name.label }}
                         <input id="guessables-0-guessable_name" name="guessables-0-guessable_name" required type="text" class="form-control" placeholder="Guessable Name">
                     <br>
                         {{ guessable.codes.label }}
 
                         <input id="guessables-0-codes" name="guessables-0-codes" required type="text" class="form-control" data-role="tagsinput" style="display: none;">
-                    <button class="btn btn-danger form-group-remove-btn" type="button" data-toggle="fieldset-remove-row" id="guessable-{{loop.index0}}-remove">Remove</button>
+                    <button style="display: none;" class="btn btn-danger form-group-remove-btn" type="button" data-toggle="fieldset-remove-row" id="guessable-{{loop.index0}}-remove">Remove</button>
                 </div>
                 {% endfor %}
             </div>
@@ -56,13 +56,13 @@
                     <div class="col-lg-3"><button class="btn btn-success form-group-header" type="button" data-toggle="fieldset-add-row" data-target="#location-fieldset">New</button></div>
                 </div>
                 {% for location in form.locations %}
-                <div class="form-row form-group-row border-bottom" data-toggle="fieldset-entry" {% if loop.index0==0 %}style="display:none;"{% endif %}>
+                <div class="form-row form-group-row border-bottom" data-toggle="fieldset-entry" data-id="0">
                     {{ location.guessable_name.label }}
                     <input id="locations-0-guessable_name" name="locations-0-guessable_name" required type="text" class="form-control" placeholder="Location Name">
                 <br>
                     {{ location.codes.label }}
                     <input id="locations-0-codes" name="lcoations-0-codes" required type="text" class="form-control" data-role="tagsinput" style="display: none;">
-                <button class="btn btn-danger form-group-remove-btn" type="button" data-toggle="fieldset-remove-row" id="location-{{loop.index0}}-remove">Remove</button>
+                <button style="display: none;" class="btn btn-danger form-group-remove-btn" type="button" data-toggle="fieldset-remove-row" id="location-{{loop.index0}}-remove">Remove</button>
             </div>
             {% endfor %}
             </div>

@@ -25,8 +25,8 @@ class UpdateMode(FlaskForm):
     update = SubmitField('Update')
 
 class OpenGuessGuessable(NoCsrfForm):
-    guessable_name = TextField('Name', validators=[validators.required()])
-    codes = TextField('Codes', validators=[validators.required()])
+    guessable_name = TextField('Name')
+    codes = TextField('Codes')
 
 class AddOpenGuess(FlaskForm):
     name = TextField('Open Guess Name', validators=[validators.required()])
